@@ -18,7 +18,7 @@ Welcome to **Cheers Bot**, a custom bot for the **Homies House** Discord server!
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/yourusername/cheers-bot.git
+git clone https://github.com/Wubbity/CheersBot.git
 cd cheers-bot
 ```
 
