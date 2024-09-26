@@ -1,3 +1,17 @@
+'''
+   ____ _                        ____        _           _   ___  
+  / ___| |__   ___  ___ _ __ ___| __ )  ___ | |_  __   _/ | / _ \ 
+ | |   | '_ \ / _ \/ _ \ '__/ __|  _ \ / _ \| __| \ \ / / || | | |
+ | |___| | | |  __/  __/ |  \__ \ |_) | (_) | |_   \ V /| || |_| |
+  \____|_| |_|\___|\___|_|  |___/____/ \___/ \__|   \_/ |_(_)___/ 
+                                                                
+  ____         __        __     _     _     _ _         
+ | __ ) _   _  \ \      / /   _| |__ | |__ (_) |_ _   _ 
+ |  _ \| | | |  \ \ /\ / / | | | '_ \| '_ \| | __| | | |
+ | |_) | |_| |   \ V  V /| |_| | |_) | |_) | | |_| |_| |
+ |____/ \__, |    \_/\_/  \__,_|_.__/|_.__/|_|\__|\__, |
+        |___/                                     |___/ 
+'''
 import discord
 from discord.ext import commands, tasks
 import asyncio
@@ -120,7 +134,14 @@ def update_config_sounds(config):
 
     save_config(config)
 
-# Easter Egg structure
+'''
+  _____          _              _____                  _                   _                    
+ | ____|__ _ ___| |_ ___ _ __  | ____|__ _  __ _   ___| |_ _ __ _   _  ___| |_ _   _ _ __ ___ _ 
+ |  _| / _` / __| __/ _ \ '__| |  _| / _` |/ _` | / __| __| '__| | | |/ __| __| | | | '__/ _ (_)
+ | |__| (_| \__ \ ||  __/ |    | |__| (_| | (_| | \__ \ |_| |  | |_| | (__| |_| |_| | | |  __/_ 
+ |_____\__,_|___/\__\___|_|    |_____\__, |\__, | |___/\__|_|   \__,_|\___|\__|\__,_|_|  \___(_)
+                                     |___/ |___/                                                
+'''
 class EasterEgg:
     def __init__(self, name, sound, join_time, play_delay, timezone, enabled=True, last_triggered=None):
         self.name = name
@@ -176,7 +197,14 @@ def save_easter_eggs():
         ]
         json.dump(data, f, indent=4)
 
-# Function to build a dynamic mapping from timezone abbreviations to full timezone names
+'''
+  _____ _                _____                  _                _        
+ |_   _(_)_ __ ___   ___|__  /___  _ __   ___  | |    ___   __ _(_) ___ _ 
+   | | | | '_ ` _ \ / _ \ / // _ \| '_ \ / _ \ | |   / _ \ / _` | |/ __(_)
+   | | | | | | | | |  __// /| (_) | | | |  __/ | |__| (_) | (_| | | (__ _ 
+   |_| |_|_| |_| |_|\___/____\___/|_| |_|\___| |_____\___/ \__, |_|\___(_)
+                                                           |___/          
+'''
 def build_timezone_mapping():
     try:
         timezones = pytz.all_timezones
@@ -363,7 +391,14 @@ def has_reload_role():
         return False
     return app_commands.check(predicate)
 
-# Slash Commands
+'''
+  ____  _           _        ____                                          _       
+ / ___|| | __ _ ___| |__    / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| |___ _ 
+ \___ \| |/ _` / __| '_ \  | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` / __(_)
+  ___) | | (_| \__ \ | | | | |__| (_) | | | | | | | | | | | (_| | | | | (_| \__ \_ 
+ |____/|_|\__,_|___/_| |_|  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|___(_)
+                                                                                   
+'''
 @bot.tree.command(name="mode", description="Show or change the sound mode (randomize/single/percent).")
 @app_commands.describe(mode_type="The sound mode to choose: 'single', 'randomize', or 'percent'.")
 @app_commands.describe(sound_name="Specify a sound if choosing single or percent mode.")
@@ -690,7 +725,14 @@ async def add_easter_egg(interaction: discord.Interaction, name: str, sound: str
     save_easter_eggs()
     await interaction.response.send_message(f"Easter Egg '{name}' added successfully.")
 
-# Slash command to display a help menu with all commands
+'''
+  _   _      _         _____           _              _   
+ | | | | ___| |_ __   | ____|_ __ ___ | |__   ___  __| |_ 
+ | |_| |/ _ \ | '_ \  |  _| | '_ ` _ \| '_ \ / _ \/ _` (_)
+ |  _  |  __/ | |_) | | |___| | | | | | |_) |  __/ (_| |_ 
+ |_| |_|\___|_| .__/  |_____|_| |_| |_|_.__/ \___|\__,_(_)
+              |_|                                         
+'''
 @bot.tree.command(name="help", description="Displays a help menu with all commands.")
 @has_general_role()
 async def help_command(interaction: discord.Interaction):
@@ -752,7 +794,14 @@ async def help_command(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
-# Error handler for application commands
+'''
+  _____                       _   _                 _ _ _               
+ | ____|_ __ _ __ ___  _ __  | | | | __ _ _ __   __| | (_)_ __   __ _ _ 
+ |  _| | '__| '__/ _ \| '__| | |_| |/ _` | '_ \ / _` | | | '_ \ / _` (_)
+ | |___| |  | | | (_) | |    |  _  | (_| | | | | (_| | | | | | | (_| |_ 
+ |_____|_|  |_|  \___/|_|    |_| |_|\__,_|_| |_|\__,_|_|_|_| |_|\__, (_)
+                                                                |___/   
+'''
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
     if isinstance(error, CheckFailure):
@@ -763,7 +812,14 @@ async def on_app_command_error(interaction: discord.Interaction, error):
             await interaction.response.send_message("An error occurred while processing the command.", ephemeral=True)
         print(f"An error occurred: {error}")
 
-# Logging function for bot actions with enhanced formatting for Easter eggs and normal joins
+'''
+  _                      _               
+ | |    ___   __ _  __ _(_)_ __   __ _ _ 
+ | |   / _ \ / _` |/ _` | | '_ \ / _` (_)
+ | |__| (_) | (_| | (_| | | | | | (_| |_ 
+ |_____\___/ \__, |\__, |_|_| |_|\__, (_)
+             |___/ |___/         |___/   
+'''
 async def log_action(
     voice_channel: discord.VoiceChannel, 
     sound_name: str, 
@@ -839,7 +895,14 @@ async def setlog(interaction: discord.Interaction, channel: discord.TextChannel)
     save_config(config)
     await interaction.response.send_message(f"Log channel set to: {channel.mention}")
 
-# Bot ready event handler
+'''
+  ____        _                        _                              _     _                     _ _             
+ | __ )  ___ | |_   _ __ ___  __ _  __| |_   _    _____   _____ _ __ | |_  | |__   __ _ _ __   __| | | ___ _ __ _ 
+ |  _ \ / _ \| __| | '__/ _ \/ _` |/ _` | | | |  / _ \ \ / / _ \ '_ \| __| | '_ \ / _` | '_ \ / _` | |/ _ \ '__(_)
+ | |_) | (_) | |_  | | |  __/ (_| | (_| | |_| | |  __/\ V /  __/ | | | |_  | | | | (_| | | | | (_| | |  __/ |   _ 
+ |____/ \___/ \__| |_|  \___|\__,_|\__,_|\__, |  \___| \_/ \___|_| |_|\__| |_| |_|\__,_|_| |_|\__,_|_|\___|_|  (_)
+                                         |___/                                                                    
+'''
 @bot.event
 async def on_ready():
     load_easter_eggs()  # Load Easter Eggs
