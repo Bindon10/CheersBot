@@ -1,0 +1,22 @@
+{
+    "sounds": {
+        "testing": 100,
+        "Cheers_Bitch": 0.001,
+        "Cheers by King": 0.001,
+        "FWYTB": 0.001,
+        "Its 420 Somewhere - Smoke up": 0.001,
+        "Its 420!!!": 0.001,
+        "cheersbitch_n_fuckyouking": 0.001,
+        "Mount-Cheers": 0.001,
+        "We hit the 20 - You better be smoking": 0.001
+    },
+    "default_sound": "testing",
+    "mode": "randomize",
+    "log_channel_id": 1287452825915228222,
+    "log_settings": {
+        "embed_title": "HH Cheers Bot Log",
+        "footer_text": "EST. 1/1/2024",
+        "thumbnail_url": "https://i.imgur.com/SKICBLv.png",
+        "footer_icon_url": "https://i.imgur.com/SKICBLv.png"
+    }
+}
