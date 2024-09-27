@@ -25,6 +25,7 @@ from discord.app_commands import CheckFailure
 from dotenv import load_dotenv
 import subprocess
 from discord.ui import Button, View
+import platform
 
 intents = discord.Intents.default()
 intents.voice_states = True
@@ -35,23 +36,32 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Use the os module to dynamically get the current working directory and join it with the sound folder path                         #
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Get the directory of the current file                                      #
 SOUND_FOLDER = os.path.join(BASE_DIR, "cheers_sounds")  # Join the base directory with the sound folder                             #
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")  # Path to config.json                                                                 
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")  # Path to config.json                                                          #
                                                                                                                                     #
-# Update ffmpeg path for Linux                                                                                                      #
-ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")                                                                            # YOU MAY HAVE TO CHANGE THIS IN YOUR OWN DIRECTORY.
+# Detect the current operating system                                                                                               #
+current_os = platform.system()                                                                                                      #
+                                                                                                                                    #
+# Update ffmpeg path for Windows and Linux dynamically based on the detected OS                                                     #
+if current_os == "Windows":                                                                                                         #
+    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
+elif current_os == "Linux":                                                                                                         #
+    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux executable                                                    #
+else:                                                                                                                               #
+    raise OSError(f"Unsupported operating system: {current_os}")                                                                    #
                                                                                                                                     #
 print(f"Sound folder path: {SOUND_FOLDER}")                                                                                         #
 print(f"FFmpeg path: {ffmpeg_path}")                                                                                                #
 #####################################################################################################################################
 
+
 # Default to a single sound file
-DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheersbitch_n_fuckyouking.mp3"
+DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
 selected_sound = DEFAULT_SOUND_FILE
 
 # Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1233164584853176391  # Your channel ID
-ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007  
-ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  
+STARTUP_CHANNEL_ID = 1233164584853176391  # What channel the bot logs it's startup to.
+ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
+ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
 
 # Easter Egg List
 easter_eggs = []
