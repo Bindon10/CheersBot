@@ -25,6 +25,7 @@ Cheers Bot is a custom Discord bot originally designed for Homies House, featuri
 
 ## Setup
 1a. **Windows: Download the files as a .Zip**
+   - Although you can download the files as a .Zip within the big green code button, I'll also link it [here](https://github.com/Wubbity/CheersBot/archive/refs/heads/main.zip).
 
 1b. **Linux: Clone the repository:**
 
