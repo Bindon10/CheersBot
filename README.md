@@ -42,11 +42,17 @@ Cheers Bot is a custom Discord bot originally designed for Homies House, featuri
        - Example: `/CheersBot/FFMPEG/ffmpeg.exe`
 
    - **Linux:**
-     - Install `ffmpeg` via your package manager (or download it manually).
-     - Ensure the `ffmpeg` binary is in the `FFMPEG` folder inside the bot directory.
-       - Example: `/CheersBot/FFMPEG/ffmpeg`
+     - Install `ffmpeg` via your package manager.
+     - if installed correctly, you shouldn't need to move the binary (The default is /usr/bin/)
 
-3. **Create a `.env` file:**
+   - **Linux Manual:**
+     - If you manually downloaded FFMPEG, comment line 60-61 and uncomment line 62-63
+      - Create a folder named FFMPEG (Case Sensitive)
+      - Ensure the `ffmpeg` binary is in the `FFMPEG` folder inside the bot directory.
+      - Example: `/CheersBot/FFMPEG/ffmpeg`
+
+
+4. **Create a `.env` file:**
 
    In the root directory, create a `.env` file to store your bot's token.
 
@@ -54,15 +60,17 @@ Cheers Bot is a custom Discord bot originally designed for Homies House, featuri
    DISCORD_BOT_TOKEN=your_discord_bot_token_here
    ```
 
-4. **Install the required dependencies:**
+5. **Install the required dependencies:**
 
-   Make sure you have Python 3.8+ installed. Install the dependencies listed in the `requirements.txt` file:
+   Make sure you have Python 3.8+ installed.
+
+   Install the dependencies listed in the `requirements.txt` file:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **Run the bot:**
+7. **Run the bot:**
 
    After configuring the bot, run it:
 

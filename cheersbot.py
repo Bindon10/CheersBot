@@ -11,6 +11,19 @@
  | |_) | |_| |   \ V  V /| |_| | |_) | |_) | | |_| |_| |
  |____/ \__, |    \_/\_/  \__,_|_.__/|_.__/|_|\__|\__, |
         |___/                                     |___/ 
+
+##############################################################################################################
+#   For Configuration:                                                                                       #
+#       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
+#       - To accommodate for longer sounds, adjust "asyncio.sleep(##)" in the relevant sections              #
+#                                                                                                            #
+#   For FFMPEG:                                                                                              #
+#       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
+#         downloaded the binary, comment lines 60-61 and uncomment lines 62-63 and follow the instructions   #
+#         within the readme.                                                                                 #
+#                                                                                                            #
+##############################################################################################################
+
 '''
 import discord
 from discord.ext import commands, tasks
@@ -45,7 +58,9 @@ current_os = platform.system()                                                  
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
 elif current_os == "Linux":                                                                                                         #
-    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux executable                                                    #
+    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                   #
+#elif current_os == "Linux":                                                                                                        #
+#    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install       #
 else:                                                                                                                               #
     raise OSError(f"Unsupported operating system: {current_os}")                                                                    #
                                                                                                                                     #
@@ -287,7 +302,7 @@ async def auto_join_task():
                         await asyncio.sleep(sleep_duration)
                         sound_to_play = choose_sound()
                         vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
-                        await asyncio.sleep(10)
+                        await asyncio.sleep(20)
                         await vc.disconnect()
                         print(f"Automatically left {voice_channel.name}")
 
@@ -319,7 +334,7 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
         sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
         vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
         
-        await asyncio.sleep(10)
+        await asyncio.sleep(20)
         await vc.disconnect()
         leave_time = datetime.now()  # Capture leave time when the bot leaves
 
@@ -546,7 +561,7 @@ async def testsound(interaction: discord.Interaction, sound_name: str, channel: 
     else:
         vc = await channel.connect()
         vc.play(discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path))
-        await asyncio.sleep(10)
+        await asyncio.sleep(20)
         if leave_after:
             await vc.disconnect()
         await interaction.response.send_message(f"Played '{sound_name}' in {channel.name}")
@@ -562,7 +577,7 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
     join_time = datetime.now()  # Capture join time
     vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
 
-    await asyncio.sleep(10)
+    await asyncio.sleep(20)
     await vc.disconnect()
     leave_time = datetime.now()  # Capture leave time
 
