@@ -14,13 +14,13 @@
 
 ##############################################################################################################
 #   For Configuration:                                                                                       #
-#          - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there      #
-#          - To accommodate for longer sounds, adjust "asyncio.sleep(##)" in the relevant sections           #
+#       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
+#       - To accommodate for longer sounds, adjust "asyncio.sleep(##)" in the relevant sections              #
 #                                                                                                            #
-#                                                                                                            #
-#                                                                                                            #
-#                                                                                                            #
-#                                                                                                            #
+#   For FFMPEG:                                                                                              #
+#       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
+#         downloaded the binary, comment lines 60-61 and uncomment lines 62-63 and follow the instructions   #
+#         within the readme.                                                                                 #
 #                                                                                                            #
 ##############################################################################################################
 
@@ -58,7 +58,7 @@ current_os = platform.system()                                                  
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
 elif current_os == "Linux":                                                                                                         #
-    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                    #
+    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                   #
 #elif current_os == "Linux":                                                                                                        #
 #    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install       #
 else:                                                                                                                               #
