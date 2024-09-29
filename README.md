@@ -62,13 +62,15 @@ Cheers Bot is a custom Discord bot originally designed for Homies House, featuri
 
 5. **Install the required dependencies:**
 
-   Make sure you have Python 3.8+ installed. Install the dependencies listed in the `requirements.txt` file:
+   Make sure you have Python 3.8+ installed.
+
+   Install the dependencies listed in the `requirements.txt` file:
 
    ```bash
    pip install -r requirements.txt
    ```
 
-6. **Run the bot:**
+7. **Run the bot:**
 
    After configuring the bot, run it:
 
