@@ -646,6 +646,7 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
 @bot.tree.command(name="join", description="Make the bot join a voice channel without playing a sound.")
 @has_general_role()
 async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
+    await interaction.response.defer()  # Avoid interaction timeout
     try:
         join_time = datetime.now()  # Capture join time
         vc = await channel.connect()
@@ -653,46 +654,47 @@ async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
         # Log the action when joining the voice channel
         await log_action(
             voice_channel=channel,
-            sound_name="No sound played",  # No sound in /join
+            sound_name="No sound played",
             is_easter_egg=False,
             mode="N/A",
             join_time=join_time,
-            leave_time=None,  # No leave time as it only joins
-            user=interaction.user  # Pass the user who ran the command
+            leave_time=None,
+            user=interaction.user
         )
 
-        await interaction.response.send_message(f"Joined {channel.name} without playing a sound.")
+        await interaction.followup.send(f"Joined {channel.name} without playing a sound.")
     except Exception as e:
-        await interaction.response.send_message(f"Error occurred: {e}")
+        await interaction.followup.send(f"Error occurred: {e}")
         print(f"Error: {e}")
 
 # Slash command to leave whatever channel the bot is currently in
 @bot.tree.command(name="leave", description="Make the bot leave the voice channel.")
 @has_general_role()
 async def leave(interaction: discord.Interaction):
+    await interaction.response.defer()  # Avoid interaction timeout
     try:
         leave_time = datetime.now()  # Capture leave time
 
         if interaction.guild.voice_client:
-            voice_channel = interaction.guild.voice_client.channel  # Capture the channel it was in
+            voice_channel = interaction.guild.voice_client.channel
             await interaction.guild.voice_client.disconnect()
             
             # Log the action when leaving the voice channel
             await log_action(
                 voice_channel=voice_channel,
-                sound_name="No sound played",  # No sound in /leave
+                sound_name="No sound played",
                 is_easter_egg=False,
                 mode="N/A",
-                join_time=None,  # No join time as it only leaves
+                join_time=None,
                 leave_time=leave_time,
-                user=interaction.user  # Pass the user who ran the command
+                user=interaction.user
             )
             
-            await interaction.response.send_message(f"Bot has left {voice_channel.name}.")
+            await interaction.followup.send(f"Bot has left {voice_channel.name}.")
         else:
-            await interaction.response.send_message("Bot is not in any voice channel.")
+            await interaction.followup.send("Bot is not in any voice channel.")
     except Exception as e:
-        await interaction.response.send_message(f"Error occurred: {e}")
+        await interaction.followup.send(f"Error occurred: {e}")
         print(f"Error: {e}")
 
 # Slash command for reloading the bot's configuration and syncing commands
