@@ -19,8 +19,9 @@
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
 #       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
-#         downloaded the binary, comment lines 60-61 and uncomment lines 62-63 and follow the instructions   #
-#         within the readme.                                                                                 #
+#         downloaded the binary you won't have to do anything, if you want to use your systems version of    #
+#         FFMPEG; comment lines 59-60 and uncomment lines 61-62                                              #
+#                                                                                                            #
 #                                                                                                            #
 ##############################################################################################################
 
