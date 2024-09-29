@@ -19,8 +19,9 @@
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
 #       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
-#         downloaded the binary, comment lines 60-61 and uncomment lines 62-63 and follow the instructions   #
-#         within the readme.                                                                                 #
+#         downloaded the binary you won't have to do anything, if you want to use your systems version of    #
+#         FFMPEG; comment lines 59-60 and uncomment lines 61-62                                              #
+#                                                                                                            #
 #                                                                                                            #
 ##############################################################################################################
 
@@ -57,10 +58,10 @@ current_os = platform.system()                                                  
 # Update ffmpeg path for Windows and Linux dynamically based on the detected OS                                                     #
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
-elif current_os == "Linux":                                                                                                         #
-    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                   #
 #elif current_os == "Linux":                                                                                                        #
-#    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install       #
+#    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
+elif current_os == "Linux":                                                                                                         #
+    ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install        #
 else:                                                                                                                               #
     raise OSError(f"Unsupported operating system: {current_os}")                                                                    #
                                                                                                                                     #
@@ -556,15 +557,23 @@ async def sounds(interaction: discord.Interaction):
 @has_general_role()
 async def testsound(interaction: discord.Interaction, sound_name: str, channel: discord.VoiceChannel, leave_after: bool = True):
     available_sounds = get_available_sounds()
+    
+    # Defer the response to give more time
+    await interaction.response.defer()
+    
     if sound_name not in available_sounds:
-        await interaction.response.send_message(f"Sound not found. Available sounds are: {', '.join(available_sounds)}")
+        await interaction.followup.send(f"Sound not found. Available sounds are: {', '.join(available_sounds)}", ephemeral=True)
     else:
         vc = await channel.connect()
         vc.play(discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path))
-        await asyncio.sleep(20)
+        
+        await asyncio.sleep(10)
+        
         if leave_after:
             await vc.disconnect()
-        await interaction.response.send_message(f"Played '{sound_name}' in {channel.name}")
+        
+        # Send the follow-up message after the sound has played
+        await interaction.followup.send(f"Played '{sound_name}' in {channel.name}")
 
 @bot.tree.command(name="cheers", description="Play a sound in a voice channel.")
 @has_general_role()
