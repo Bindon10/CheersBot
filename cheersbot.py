@@ -52,7 +52,7 @@ current_os = platform.system()                                                  
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
 elif current_os == "Linux":                                                                                                         #
-    ffmpeg_path = os.path.join(/usr/bin, "ffmpeg")  # Linux executable                                                    #
+    ffmpeg_path = os.path.join("usr/bin/", "ffmpeg")  # Linux executable                                              #
 else:                                                                                                                               #
     raise OSError(f"Unsupported operating system: {current_os}")                                                                    #
                                                                                                                                     #
