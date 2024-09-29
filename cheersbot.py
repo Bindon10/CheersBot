@@ -75,9 +75,9 @@ DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
 selected_sound = DEFAULT_SOUND_FILE
 
 # Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1233164584853176391  # What channel the bot logs it's startup to.
-ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
-ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
+STARTUP_CHANNEL_ID = 11290075295772311633  # What channel the bot logs it's startup to.
+ROLE_NEEDED_FOR_GENERAL_COMMAND = 694756118983082048 # General Staff Role
+ROLE_NEEDED_FOR_RELOAD_COMMAND = 694756118983082048  # Higher Staff Role
 
 # Easter Egg List
 easter_eggs = []
@@ -302,10 +302,20 @@ async def auto_join_task():
                         sleep_duration = (next_time - now).total_seconds()
                         await asyncio.sleep(sleep_duration)
                         sound_to_play = choose_sound()
-                        vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
-                        await asyncio.sleep(20)
-                        await vc.disconnect()
-                        print(f"Automatically left {voice_channel.name}")
+
+                        # Define the after function to disconnect after the sound is done
+                        def after_playing(error):
+                            coro = vc.disconnect()
+                            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+                            try:
+                                fut.result()  # Ensure any exceptions are handled
+                            except Exception as e:
+                                print(f"Error disconnecting: {e}")
+
+                        vc.play(
+                            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+                            after=after_playing  # Pass the after function
+                        )
 
                         leave_time = datetime.now()  # Capture leave time
 
@@ -333,10 +343,21 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
             await asyncio.sleep(easter_egg.play_delay * 60)
         
         sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
-        vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
-        
-        await asyncio.sleep(20)
-        await vc.disconnect()
+
+        # Define the after function to disconnect after the sound is done
+        def after_playing(error):
+            coro = vc.disconnect()
+            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+            try:
+                fut.result()  # Ensure any exceptions are handled
+            except Exception as e:
+                print(f"Error disconnecting: {e}")
+
+        vc.play(
+            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+            after=after_playing  # Pass the after function
+        )
+
         leave_time = datetime.now()  # Capture leave time when the bot leaves
 
         # Log the Easter egg action after the bot leaves the voice channel
@@ -565,15 +586,23 @@ async def testsound(interaction: discord.Interaction, sound_name: str, channel: 
         await interaction.followup.send(f"Sound not found. Available sounds are: {', '.join(available_sounds)}", ephemeral=True)
     else:
         vc = await channel.connect()
-        vc.play(discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path))
+
+        # Define the after function to disconnect after the sound is done
+        def after_playing(error):
+            coro = vc.disconnect()
+            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+            try:
+                fut.result()  # Ensure any exceptions are handled
+            except Exception as e:
+                print(f"Error disconnecting: {e}")
+
+        vc.play(
+            discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path),
+            after=after_playing  # Pass the after function
+        )
         
-        await asyncio.sleep(10)
-        
-        if leave_after:
-            await vc.disconnect()
-        
-        # Send the follow-up message after the sound has played
-        await interaction.followup.send(f"Played '{sound_name}' in {channel.name}")
+        # Send the follow-up message while the sound is playing
+        await interaction.followup.send(f"Playing '{sound_name}' in {channel.name}")
 
 @bot.tree.command(name="cheers", description="Play a sound in a voice channel.")
 @has_general_role()
@@ -584,14 +613,23 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
     sound_to_play = choose_sound()
     vc = await channel.connect()
     join_time = datetime.now()  # Capture join time
-    vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
 
-    await asyncio.sleep(20)
-    await vc.disconnect()
-    leave_time = datetime.now()  # Capture leave time
+    # Define the after function to disconnect after the sound is done
+    def after_playing(error):
+        coro = vc.disconnect()
+        fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+        try:
+            fut.result()  # Ensure any exceptions are handled
+        except Exception as e:
+            print(f"Error disconnecting: {e}")
 
-    # Send the follow-up message after the sound has played
-    await interaction.followup.send(f"Played sound in {channel.name}")
+    vc.play(
+        discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+        after=after_playing  # Pass the after function
+    )
+
+    # Send the follow-up message after playing sound
+    await interaction.followup.send(f"Playing sound in {channel.name}")
 
     # Log the action after the bot leaves the voice channel
     await log_action(
@@ -600,10 +638,10 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
         is_easter_egg=False,
         mode=load_or_create_config()["mode"],
         join_time=join_time,
-        leave_time=leave_time,
+        leave_time=datetime.now(),  # Log the leave time after playing sound
         user=interaction.user  # Pass the user who ran the command
     )
-
+    
 # Slash command to join a specific voice channel without playing a sound
 @bot.tree.command(name="join", description="Make the bot join a voice channel without playing a sound.")
 @has_general_role()
@@ -656,7 +694,6 @@ async def leave(interaction: discord.Interaction):
     except Exception as e:
         await interaction.response.send_message(f"Error occurred: {e}")
         print(f"Error: {e}")
-
 
 # Slash command for reloading the bot's configuration and syncing commands
 @bot.tree.command(name="reload", description="Reload the bot's configuration and sync slash commands.")
