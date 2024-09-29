@@ -43,10 +43,11 @@ Cheers Bot is a custom Discord bot originally designed for Homies House, featuri
 
    - **Linux:**
      - Install `ffmpeg` via your package manager.
-     - if installed correctly, you shouldn't need to move the binary (The default is /usr/bin/)
+     - if installed correctly, you won't need to move the binary (The default is /usr/bin/)
+     - To use the system installed version of FFMPEG, you will need to follow the instructions in the cheersbot.py file
 
    - **Linux Manual:**
-     - If you manually downloaded FFMPEG, comment line 60-61 and uncomment line 62-63
+     - If you manually downloaded FFMPEG you won't need to change the cheersbot.py file
       - Create a folder named FFMPEG (Case Sensitive)
       - Ensure the `ffmpeg` binary is in the `FFMPEG` folder inside the bot directory.
       - Example: `/CheersBot/FFMPEG/ffmpeg`
