@@ -556,15 +556,23 @@ async def sounds(interaction: discord.Interaction):
 @has_general_role()
 async def testsound(interaction: discord.Interaction, sound_name: str, channel: discord.VoiceChannel, leave_after: bool = True):
     available_sounds = get_available_sounds()
+    
+    # Defer the response to give more time
+    await interaction.response.defer()
+    
     if sound_name not in available_sounds:
-        await interaction.response.send_message(f"Sound not found. Available sounds are: {', '.join(available_sounds)}")
+        await interaction.followup.send(f"Sound not found. Available sounds are: {', '.join(available_sounds)}", ephemeral=True)
     else:
         vc = await channel.connect()
         vc.play(discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path))
-        await asyncio.sleep(20)
+        
+        await asyncio.sleep(10)
+        
         if leave_after:
             await vc.disconnect()
-        await interaction.response.send_message(f"Played '{sound_name}' in {channel.name}")
+        
+        # Send the follow-up message after the sound has played
+        await interaction.followup.send(f"Played '{sound_name}' in {channel.name}")
 
 @bot.tree.command(name="cheers", description="Play a sound in a voice channel.")
 @has_general_role()
