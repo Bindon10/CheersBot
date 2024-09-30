@@ -15,7 +15,7 @@
 ##############################################################################################################
 #   For Configuration:                                                                                       #
 #       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
-#       - To accommodate for longer sounds, adjust "asyncio.sleep(##)" in the relevant sections              #
+#                                                                                                            #
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
 #       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
