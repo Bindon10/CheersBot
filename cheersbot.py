@@ -648,16 +648,15 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
 async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
     await interaction.response.defer()  # Avoid interaction timeout
     try:
-        join_time = datetime.now()  # Capture join time
-        vc = await channel.connect()
-        
-        # Log the action when joining the voice channel
+        await channel.connect()  # Join the voice channel
+
+        # Log the action when joining
         await log_action(
             voice_channel=channel,
             sound_name="No sound played",
             is_easter_egg=False,
             mode="N/A",
-            join_time=join_time,
+            join_time=datetime.now(),  # Capture join time
             leave_time=None,
             user=interaction.user
         )
@@ -673,23 +672,23 @@ async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
 async def leave(interaction: discord.Interaction):
     await interaction.response.defer()  # Avoid interaction timeout
     try:
-        leave_time = datetime.now()  # Capture leave time
+        voice_client = interaction.guild.voice_client
 
-        if interaction.guild.voice_client:
-            voice_channel = interaction.guild.voice_client.channel
-            await interaction.guild.voice_client.disconnect()
+        if voice_client:
+            voice_channel = voice_client.channel
+            await voice_client.disconnect()
             
-            # Log the action when leaving the voice channel
+            # Log the action when leaving
             await log_action(
                 voice_channel=voice_channel,
                 sound_name="No sound played",
                 is_easter_egg=False,
                 mode="N/A",
                 join_time=None,
-                leave_time=leave_time,
+                leave_time=datetime.now(),  # Capture leave time directly
                 user=interaction.user
             )
-            
+
             await interaction.followup.send(f"Bot has left {voice_channel.name}.")
         else:
             await interaction.followup.send("Bot is not in any voice channel.")
