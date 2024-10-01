@@ -75,9 +75,9 @@ DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
 selected_sound = DEFAULT_SOUND_FILE
 
 # Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1290075295772311633  # What channel the bot logs it's startup to.
-ROLE_NEEDED_FOR_GENERAL_COMMAND = 694756118983082048 # General Staff Role
-ROLE_NEEDED_FOR_RELOAD_COMMAND = 694756118983082048  # Higher Staff Role
+STARTUP_CHANNEL_ID = 1287452825915228222  # What channel the bot logs it's startup to.
+ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
+ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
 
 # Easter Egg List
 easter_eggs = []
@@ -172,11 +172,11 @@ class EasterEgg:
     def __init__(self, name, sound, join_time, play_delay, timezone, enabled=True, last_triggered=None):
         self.name = name
         self.sound = sound
-        self.join_time = join_time  # Should be in the format of "4:20 PM"
-        self.play_delay = play_delay  # Delay in minutes before playing the sound
-        self.timezone = timezone  # Timezone to follow
-        self.enabled = enabled  # Easter Egg enabled or disabled
-        self.last_triggered = last_triggered if last_triggered else None  # Track the last time this Easter Egg was triggered
+        self.join_time = join_time
+        self.play_delay = play_delay
+        self.timezone = timezone
+        self.enabled = enabled
+        self.last_triggered = last_triggered  # Keep it None if it hasn't been triggered
 
     def get_converted_time(self):
         tz_name = self.timezone
@@ -188,23 +188,42 @@ class EasterEgg:
 
         try:
             tz = pytz.timezone(tz_name)
-            join_time = datetime.strptime(self.join_time, "%I:%M %p")  # Parse join_time (naive)
+            join_time = datetime.strptime(self.join_time, "%I:%M %p")  # Parse join_time as naive
             now = datetime.now(tz)
+            # Combine today's date with the provided time
             join_time = join_time.replace(year=now.year, month=now.month, day=now.day)
             join_time_aware = tz.localize(join_time)
-            return join_time_aware.astimezone(pytz.utc)
+            return join_time_aware.astimezone(pytz.utc)  # Return join time in UTC
         except pytz.UnknownTimeZoneError:
             print(f"Error: Invalid timezone '{self.timezone}'")
             return None
 
-    # New method to check if the Easter Egg can be triggered
     def can_trigger(self):
-        """Checks if the Easter Egg can be triggered based on the last time it was triggered."""
+        """Checks if the Easter Egg can be triggered based on last trigger and current time."""
+        now_utc = datetime.now(pytz.utc)  # Get current time in UTC
+        join_time_utc = self.get_converted_time()  # Convert join_time to UTC
+
+        if join_time_utc is None:
+            print(f"Error: Cannot check trigger for Easter Egg '{self.name}' due to invalid timezone.")
+            return False
+
+    # If never triggered, check if the current UTC time has passed the join_time
         if self.last_triggered is None:
-            # If never triggered, it can trigger
-            return True
-        # If it hasn't been triggered today, it can trigger
-        return datetime.now(pytz.utc).date() != self.last_triggered.date()
+            if now_utc >= join_time_utc:
+                self.mark_triggered()  # Mark it as triggered
+                return True
+
+        # Check if it hasn't been triggered today and the join_time has passed
+        last_triggered_date = self.last_triggered.date() if self.last_triggered else None
+        now_date = now_utc.date()
+
+        if last_triggered_date is None:  # Handle case when last_triggered is None
+            return False
+
+        if now_date != last_triggered_date:
+            if now_utc >= join_time_utc:
+                self.mark_triggered()  # Update last_triggered to now
+                return True
 
     def mark_triggered(self):
         """Marks the Easter Egg as triggered by setting the current UTC time."""
@@ -340,21 +359,27 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
 
         # Check if already connected to a voice channel
         if guild.voice_client is None:
+            print(f"Bot is not connected. Joining {voice_channel.name}...")
             vc = await voice_channel.connect()
+            print(f"Joined {voice_channel.name}.")
         else:
             vc = guild.voice_client
+            print(f"Bot is already connected to {vc.channel.name}.")
 
         # Apply delay if configured
         if easter_egg.play_delay > 0:
+            print(f"Delaying sound for {easter_egg.play_delay} minutes...")
             await asyncio.sleep(easter_egg.play_delay * 60)
 
         sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
+        print(f"Playing sound: {sound_to_play}")
 
         # Function to disconnect after sound is done
         async def after_playing(error):
             if error:
                 print(f"Error playing sound: {error}")
             if vc.is_connected():
+                print(f"Disconnecting from {vc.channel.name}...")
                 await vc.disconnect()
 
         # Start playing the sound
@@ -363,14 +388,11 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
             after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
         )
 
-        leave_time = datetime.now()  # Capture leave time when the bot leaves
-
         # Log the action or handle any additional logic here
         # e.g., await log_action(...)
 
     except Exception as e:
         print(f"Error in handle_easter_egg_trigger: {e}")
-
 
         # Log the Easter egg action after the bot leaves the voice channel
         await log_action(
