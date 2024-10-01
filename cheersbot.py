@@ -386,18 +386,31 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
     except Exception as e:
         print(f"Error occurred during Easter Egg activation: {e}")
 
+# Global variables to store Easter eggs and last modified timestamp
+easter_eggs = []
+last_modified_time = None
+
 # Function to load Easter Eggs from a JSON file
 def load_easter_eggs():
-    global easter_eggs
-    easter_eggs = []
-    
-    if os.path.exists(EASTER_EGG_FILE):
-        try:
+    global easter_eggs, last_modified_time
+
+    # Check if file exists
+    if not os.path.exists(EASTER_EGG_FILE):
+        print(f"File {EASTER_EGG_FILE} does not exist. Initializing an empty list.")
+        easter_eggs = []
+        return
+
+    try:
+        # Get the last modified time of the file
+        current_modified_time = os.path.getmtime(EASTER_EGG_FILE)
+
+        # Only reload if the file has changed since the last check
+        if last_modified_time is None or current_modified_time > last_modified_time:
             with open(EASTER_EGG_FILE, 'r') as f:
                 easter_eggs_data = json.load(f)
-                
+                easter_eggs = []
+
                 for egg_data in easter_eggs_data:
-                    # Safely parse 'last_triggered' if it's present and a valid string
                     last_triggered = egg_data.get('last_triggered')
                     if isinstance(last_triggered, str):
                         try:
@@ -405,22 +418,28 @@ def load_easter_eggs():
                         except ValueError:
                             print(f"Error: Invalid date format for Easter egg {egg_data.get('name')}, setting 'last_triggered' to None.")
                             egg_data['last_triggered'] = None
-                    
+
                     try:
                         easter_eggs.append(EasterEgg(**egg_data))
                     except TypeError as e:
                         print(f"Error: Missing or invalid fields for Easter egg: {e}. Skipping entry.")
-                
-                print(f"Loaded {len(easter_eggs)} Easter Eggs from file.")
-        
-        except json.JSONDecodeError:
-            print(f"Error: {EASTER_EGG_FILE} contains invalid JSON. Initializing an empty list.")
-        
-        except Exception as e:
-            print(f"Unexpected error while loading Easter eggs: {e}")
-    
-    else:
-        print(f"File {EASTER_EGG_FILE} does not exist. Initializing an empty list.")
+
+            # Update the last modified time
+            last_modified_time = current_modified_time
+            print(f"Reloaded {len(easter_eggs)} Easter Eggs from file.")
+
+        else:
+            print(f"No changes detected in {EASTER_EGG_FILE}, skipping reload.")
+
+    except json.JSONDecodeError:
+        print(f"Error: {EASTER_EGG_FILE} contains invalid JSON. Initializing an empty list.")
+        easter_eggs = []
+    except Exception as e:
+        print(f"Unexpected error while loading Easter eggs: {e}")
+
+# Function to check and reload the Easter Egg list if the file has changed
+def check_and_reload_easter_eggs():
+    load_easter_eggs()  # Simply call the load function to handle checking and reloading
 
 # Function to get the most populated voice channel
 def get_most_populated_voice_channel(guild: discord.Guild):
@@ -747,6 +766,12 @@ async def reload(interaction: discord.Interaction):
     except Exception as e:
         await interaction.followup.send(f"Error occurred during reload: {e}")
         print(f"Error during reload: {e}")
+
+# Periodically check and reload Easter eggs
+async def periodic_check():
+    while True:
+        check_and_reload_easter_eggs()
+        await asyncio.sleep(60)  # Check every minute
 
 # Slash command to list, enable, or disable Easter Eggs
 @bot.tree.command(name="easteregg", description="List, enable, or disable Easter Eggs.")
