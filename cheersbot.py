@@ -337,28 +337,40 @@ async def auto_join_task():
 async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
     try:
         join_time = datetime.now()  # Capture join time when the bot joins
-        vc = await voice_channel.connect()
 
+        # Check if already connected to a voice channel
+        if guild.voice_client is None:
+            vc = await voice_channel.connect()
+        else:
+            vc = guild.voice_client
+
+        # Apply delay if configured
         if easter_egg.play_delay > 0:
             await asyncio.sleep(easter_egg.play_delay * 60)
-        
+
         sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
 
-        # Define the after function to disconnect after the sound is done
-        def after_playing(error):
-            coro = vc.disconnect()
-            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
-            try:
-                fut.result()  # Ensure any exceptions are handled
-            except Exception as e:
-                print(f"Error disconnecting: {e}")
+        # Function to disconnect after sound is done
+        async def after_playing(error):
+            if error:
+                print(f"Error playing sound: {error}")
+            if vc.is_connected():
+                await vc.disconnect()
 
+        # Start playing the sound
         vc.play(
             discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
-            after=after_playing  # Pass the after function
+            after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
         )
 
         leave_time = datetime.now()  # Capture leave time when the bot leaves
+
+        # Log the action or handle any additional logic here
+        # e.g., await log_action(...)
+
+    except Exception as e:
+        print(f"Error in handle_easter_egg_trigger: {e}")
+
 
         # Log the Easter egg action after the bot leaves the voice channel
         await log_action(
@@ -377,22 +389,38 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
 # Function to load Easter Eggs from a JSON file
 def load_easter_eggs():
     global easter_eggs
+    easter_eggs = []
+    
     if os.path.exists(EASTER_EGG_FILE):
         try:
             with open(EASTER_EGG_FILE, 'r') as f:
                 easter_eggs_data = json.load(f)
-                easter_eggs = []
+                
                 for egg_data in easter_eggs_data:
-                    # Convert ISO format string back to datetime object
-                    if egg_data.get('last_triggered'):
-                        egg_data['last_triggered'] = datetime.fromisoformat(egg_data['last_triggered'])
-                    easter_eggs.append(EasterEgg(**egg_data))
+                    # Safely parse 'last_triggered' if it's present and a valid string
+                    last_triggered = egg_data.get('last_triggered')
+                    if isinstance(last_triggered, str):
+                        try:
+                            egg_data['last_triggered'] = datetime.fromisoformat(last_triggered)
+                        except ValueError:
+                            print(f"Error: Invalid date format for Easter egg {egg_data.get('name')}, setting 'last_triggered' to None.")
+                            egg_data['last_triggered'] = None
+                    
+                    try:
+                        easter_eggs.append(EasterEgg(**egg_data))
+                    except TypeError as e:
+                        print(f"Error: Missing or invalid fields for Easter egg: {e}. Skipping entry.")
+                
                 print(f"Loaded {len(easter_eggs)} Easter Eggs from file.")
+        
         except json.JSONDecodeError:
             print(f"Error: {EASTER_EGG_FILE} contains invalid JSON. Initializing an empty list.")
-            easter_eggs = []
+        
+        except Exception as e:
+            print(f"Unexpected error while loading Easter eggs: {e}")
+    
     else:
-        easter_eggs = []
+        print(f"File {EASTER_EGG_FILE} does not exist. Initializing an empty list.")
 
 # Function to get the most populated voice channel
 def get_most_populated_voice_channel(guild: discord.Guild):
@@ -584,11 +612,21 @@ async def testsound(interaction: discord.Interaction, sound_name: str, channel: 
     
     if sound_name not in available_sounds:
         await interaction.followup.send(f"Sound not found. Available sounds are: {', '.join(available_sounds)}", ephemeral=True)
-    else:
+        return
+    
+    # Check if bot is already connected to a voice channel
+    vc = interaction.guild.voice_client
+    
+    if vc is None or vc.channel != channel:
+        # If not connected or connected to a different channel, connect to the specified one
         vc = await channel.connect()
+    else:
+        # Already connected to the same channel
+        await interaction.followup.send(f"Bot is already connected to {channel.name}. Playing the sound.")
 
-        # Define the after function to disconnect after the sound is done
-        def after_playing(error):
+    # Define the after function to disconnect after the sound is done, if `leave_after` is True
+    def after_playing(error):
+        if leave_after:
             coro = vc.disconnect()
             fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
             try:
@@ -596,13 +634,14 @@ async def testsound(interaction: discord.Interaction, sound_name: str, channel: 
             except Exception as e:
                 print(f"Error disconnecting: {e}")
 
-        vc.play(
-            discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path),
-            after=after_playing  # Pass the after function
-        )
-        
-        # Send the follow-up message while the sound is playing
-        await interaction.followup.send(f"Playing '{sound_name}' in {channel.name}")
+    # Play the sound
+    vc.play(
+        discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path),
+        after=after_playing  # Pass the after function
+    )
+    
+    # Send the follow-up message while the sound is playing
+    await interaction.followup.send(f"Playing '{sound_name}' in {channel.name}")
 
 @bot.tree.command(name="cheers", description="Play a sound in a voice channel.")
 @has_general_role()
