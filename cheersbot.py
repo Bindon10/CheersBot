@@ -705,10 +705,18 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
 @bot.tree.command(name="join", description="Make the bot join a voice channel without playing a sound.")
 @has_general_role()
 async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
+    await interaction.response.defer()  # Avoid interaction timeout
     try:
         join_time = datetime.now()  # Capture join time
-        vc = await channel.connect()
         
+        # Check if the bot is already in a voice channel and leave if necessary
+        if interaction.guild.voice_client:
+            if interaction.guild.voice_client.channel != channel:
+                await interaction.guild.voice_client.disconnect()
+
+        # Connect with self_deaf=True to suppress microphone activation
+        vc = await channel.connect(self_deaf=True)
+
         # Log the action when joining the voice channel
         await log_action(
             voice_channel=channel,
@@ -720,10 +728,11 @@ async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
             user=interaction.user  # Pass the user who ran the command
         )
 
-        await interaction.response.send_message(f"Joined {channel.name} without playing a sound.")
+        await interaction.followup.send(f"Joined {channel.name} without playing a sound. Microphone is suppressed.")
     except Exception as e:
-        await interaction.response.send_message(f"Error occurred: {e}")
+        await interaction.followup.send(f"Error occurred: {e}")
         print(f"Error: {e}")
+
 
 # Slash command to leave whatever channel the bot is currently in
 @bot.tree.command(name="leave", description="Make the bot leave the voice channel.")
