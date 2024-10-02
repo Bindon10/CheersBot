@@ -15,12 +15,12 @@
 ##############################################################################################################
 #   For Configuration:                                                                                       #
 #       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
-#       - To accommodate for longer sounds, adjust "asyncio.sleep(##)" in the relevant sections              #
+#                                                                                                            #
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
 #       - Normally on Linux FFMPEG will install in /usr/bin/, if in your setup you have manually             #
 #         downloaded the binary you won't have to do anything, if you want to use your systems version of    #
-#         FFMPEG; comment lines 59-60 and uncomment lines 61-62                                              #
+#         FFMPEG; uncomment lines 61-62 and comment lines 63-64                                              #
 #                                                                                                            #
 #                                                                                                            #
 ##############################################################################################################
@@ -59,7 +59,7 @@ current_os = platform.system()                                                  
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
 #elif current_os == "Linux":                                                                                                        #
-#    ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
+#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
 elif current_os == "Linux":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install        #
 else:                                                                                                                               #
@@ -75,7 +75,7 @@ DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
 selected_sound = DEFAULT_SOUND_FILE
 
 # Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1233164584853176391  # What channel the bot logs it's startup to.
+STARTUP_CHANNEL_ID = 1287452825915228222  # What channel the bot logs it's startup to.
 ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
 ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
 
@@ -172,11 +172,11 @@ class EasterEgg:
     def __init__(self, name, sound, join_time, play_delay, timezone, enabled=True, last_triggered=None):
         self.name = name
         self.sound = sound
-        self.join_time = join_time  # Should be in the format of "4:20 PM"
-        self.play_delay = play_delay  # Delay in minutes before playing the sound
-        self.timezone = timezone  # Timezone to follow
-        self.enabled = enabled  # Easter Egg enabled or disabled
-        self.last_triggered = last_triggered if last_triggered else None  # Track the last time this Easter Egg was triggered
+        self.join_time = join_time
+        self.play_delay = play_delay
+        self.timezone = timezone
+        self.enabled = enabled
+        self.last_triggered = last_triggered  # Keep it None if it hasn't been triggered
 
     def get_converted_time(self):
         tz_name = self.timezone
@@ -188,23 +188,42 @@ class EasterEgg:
 
         try:
             tz = pytz.timezone(tz_name)
-            join_time = datetime.strptime(self.join_time, "%I:%M %p")  # Parse join_time (naive)
+            join_time = datetime.strptime(self.join_time, "%I:%M %p")  # Parse join_time as naive
             now = datetime.now(tz)
+            # Combine today's date with the provided time
             join_time = join_time.replace(year=now.year, month=now.month, day=now.day)
             join_time_aware = tz.localize(join_time)
-            return join_time_aware.astimezone(pytz.utc)
+            return join_time_aware.astimezone(pytz.utc)  # Return join time in UTC
         except pytz.UnknownTimeZoneError:
             print(f"Error: Invalid timezone '{self.timezone}'")
             return None
 
-    # New method to check if the Easter Egg can be triggered
     def can_trigger(self):
-        """Checks if the Easter Egg can be triggered based on the last time it was triggered."""
+        """Checks if the Easter Egg can be triggered based on last trigger and current time."""
+        now_utc = datetime.now(pytz.utc)  # Get current time in UTC
+        join_time_utc = self.get_converted_time()  # Convert join_time to UTC
+
+        if join_time_utc is None:
+            print(f"Error: Cannot check trigger for Easter Egg '{self.name}' due to invalid timezone.")
+            return False
+
+    # If never triggered, check if the current UTC time has passed the join_time
         if self.last_triggered is None:
-            # If never triggered, it can trigger
-            return True
-        # If it hasn't been triggered today, it can trigger
-        return datetime.now(pytz.utc).date() != self.last_triggered.date()
+            if now_utc >= join_time_utc:
+                self.mark_triggered()  # Mark it as triggered
+                return True
+
+        # Check if it hasn't been triggered today and the join_time has passed
+        last_triggered_date = self.last_triggered.date() if self.last_triggered else None
+        now_date = now_utc.date()
+
+        if last_triggered_date is None:  # Handle case when last_triggered is None
+            return False
+
+        if now_date != last_triggered_date:
+            if now_utc >= join_time_utc:
+                self.mark_triggered()  # Update last_triggered to now
+                return True
 
     def mark_triggered(self):
         """Marks the Easter Egg as triggered by setting the current UTC time."""
@@ -302,10 +321,20 @@ async def auto_join_task():
                         sleep_duration = (next_time - now).total_seconds()
                         await asyncio.sleep(sleep_duration)
                         sound_to_play = choose_sound()
-                        vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
-                        await asyncio.sleep(20)
-                        await vc.disconnect()
-                        print(f"Automatically left {voice_channel.name}")
+
+                        # Define the after function to disconnect after the sound is done
+                        def after_playing(error):
+                            coro = vc.disconnect()
+                            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+                            try:
+                                fut.result()  # Ensure any exceptions are handled
+                            except Exception as e:
+                                print(f"Error disconnecting: {e}")
+
+                        vc.play(
+                            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+                            after=after_playing  # Pass the after function
+                        )
 
                         leave_time = datetime.now()  # Capture leave time
 
@@ -327,17 +356,43 @@ async def auto_join_task():
 async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
     try:
         join_time = datetime.now()  # Capture join time when the bot joins
-        vc = await voice_channel.connect()
 
+        # Check if already connected to a voice channel
+        if guild.voice_client is None:
+            print(f"Bot is not connected. Joining {voice_channel.name}...")
+            vc = await voice_channel.connect()
+            print(f"Joined {voice_channel.name}.")
+        else:
+            vc = guild.voice_client
+            print(f"Bot is already connected to {vc.channel.name}.")
+
+        # Apply delay if configured
         if easter_egg.play_delay > 0:
+            print(f"Delaying sound for {easter_egg.play_delay} minutes...")
             await asyncio.sleep(easter_egg.play_delay * 60)
-        
+
         sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
-        vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
-        
-        await asyncio.sleep(20)
-        await vc.disconnect()
-        leave_time = datetime.now()  # Capture leave time when the bot leaves
+        print(f"Playing sound: {sound_to_play}")
+
+        # Function to disconnect after sound is done
+        async def after_playing(error):
+            if error:
+                print(f"Error playing sound: {error}")
+            if vc.is_connected():
+                print(f"Disconnecting from {vc.channel.name}...")
+                await vc.disconnect()
+
+        # Start playing the sound
+        vc.play(
+            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+            after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
+        )
+
+        # Log the action or handle any additional logic here
+        # e.g., await log_action(...)
+
+    except Exception as e:
+        print(f"Error in handle_easter_egg_trigger: {e}")
 
         # Log the Easter egg action after the bot leaves the voice channel
         await log_action(
@@ -353,25 +408,60 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
     except Exception as e:
         print(f"Error occurred during Easter Egg activation: {e}")
 
+# Global variables to store Easter eggs and last modified timestamp
+easter_eggs = []
+last_modified_time = None
+
 # Function to load Easter Eggs from a JSON file
 def load_easter_eggs():
-    global easter_eggs
-    if os.path.exists(EASTER_EGG_FILE):
-        try:
+    global easter_eggs, last_modified_time
+
+    # Check if file exists
+    if not os.path.exists(EASTER_EGG_FILE):
+        print(f"File {EASTER_EGG_FILE} does not exist. Initializing an empty list.")
+        easter_eggs = []
+        return
+
+    try:
+        # Get the last modified time of the file
+        current_modified_time = os.path.getmtime(EASTER_EGG_FILE)
+
+        # Only reload if the file has changed since the last check
+        if last_modified_time is None or current_modified_time > last_modified_time:
             with open(EASTER_EGG_FILE, 'r') as f:
                 easter_eggs_data = json.load(f)
                 easter_eggs = []
+
                 for egg_data in easter_eggs_data:
-                    # Convert ISO format string back to datetime object
-                    if egg_data.get('last_triggered'):
-                        egg_data['last_triggered'] = datetime.fromisoformat(egg_data['last_triggered'])
-                    easter_eggs.append(EasterEgg(**egg_data))
-                print(f"Loaded {len(easter_eggs)} Easter Eggs from file.")
-        except json.JSONDecodeError:
-            print(f"Error: {EASTER_EGG_FILE} contains invalid JSON. Initializing an empty list.")
-            easter_eggs = []
-    else:
+                    last_triggered = egg_data.get('last_triggered')
+                    if isinstance(last_triggered, str):
+                        try:
+                            egg_data['last_triggered'] = datetime.fromisoformat(last_triggered)
+                        except ValueError:
+                            print(f"Error: Invalid date format for Easter egg {egg_data.get('name')}, setting 'last_triggered' to None.")
+                            egg_data['last_triggered'] = None
+
+                    try:
+                        easter_eggs.append(EasterEgg(**egg_data))
+                    except TypeError as e:
+                        print(f"Error: Missing or invalid fields for Easter egg: {e}. Skipping entry.")
+
+            # Update the last modified time
+            last_modified_time = current_modified_time
+            print(f"Reloaded {len(easter_eggs)} Easter Eggs from file.")
+
+        else:
+            print(f"No changes detected in {EASTER_EGG_FILE}, skipping reload.")
+
+    except json.JSONDecodeError:
+        print(f"Error: {EASTER_EGG_FILE} contains invalid JSON. Initializing an empty list.")
         easter_eggs = []
+    except Exception as e:
+        print(f"Unexpected error while loading Easter eggs: {e}")
+
+# Function to check and reload the Easter Egg list if the file has changed
+def check_and_reload_easter_eggs():
+    load_easter_eggs()  # Simply call the load function to handle checking and reloading
 
 # Function to get the most populated voice channel
 def get_most_populated_voice_channel(guild: discord.Guild):
@@ -563,17 +653,36 @@ async def testsound(interaction: discord.Interaction, sound_name: str, channel: 
     
     if sound_name not in available_sounds:
         await interaction.followup.send(f"Sound not found. Available sounds are: {', '.join(available_sounds)}", ephemeral=True)
-    else:
+        return
+    
+    # Check if bot is already connected to a voice channel
+    vc = interaction.guild.voice_client
+    
+    if vc is None or vc.channel != channel:
+        # If not connected or connected to a different channel, connect to the specified one
         vc = await channel.connect()
-        vc.play(discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path))
-        
-        await asyncio.sleep(10)
-        
+    else:
+        # Already connected to the same channel
+        await interaction.followup.send(f"Bot is already connected to {channel.name}. Playing the sound.")
+
+    # Define the after function to disconnect after the sound is done, if `leave_after` is True
+    def after_playing(error):
         if leave_after:
-            await vc.disconnect()
-        
-        # Send the follow-up message after the sound has played
-        await interaction.followup.send(f"Played '{sound_name}' in {channel.name}")
+            coro = vc.disconnect()
+            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+            try:
+                fut.result()  # Ensure any exceptions are handled
+            except Exception as e:
+                print(f"Error disconnecting: {e}")
+
+    # Play the sound
+    vc.play(
+        discord.FFmpegPCMAudio(os.path.join(SOUND_FOLDER, f"{sound_name}.mp3"), executable=ffmpeg_path),
+        after=after_playing  # Pass the after function
+    )
+    
+    # Send the follow-up message while the sound is playing
+    await interaction.followup.send(f"Playing '{sound_name}' in {channel.name}")
 
 @bot.tree.command(name="cheers", description="Play a sound in a voice channel.")
 @has_general_role()
@@ -584,14 +693,23 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
     sound_to_play = choose_sound()
     vc = await channel.connect()
     join_time = datetime.now()  # Capture join time
-    vc.play(discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path))
 
-    await asyncio.sleep(20)
-    await vc.disconnect()
-    leave_time = datetime.now()  # Capture leave time
+    # Define the after function to disconnect after the sound is done
+    def after_playing(error):
+        coro = vc.disconnect()
+        fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+        try:
+            fut.result()  # Ensure any exceptions are handled
+        except Exception as e:
+            print(f"Error disconnecting: {e}")
 
-    # Send the follow-up message after the sound has played
-    await interaction.followup.send(f"Played sound in {channel.name}")
+    vc.play(
+        discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+        after=after_playing  # Pass the after function
+    )
+
+    # Send the follow-up message after playing sound
+    await interaction.followup.send(f"Playing sound in {channel.name}")
 
     # Log the action after the bot leaves the voice channel
     await log_action(
@@ -600,18 +718,27 @@ async def cheers(interaction: discord.Interaction, channel: discord.VoiceChannel
         is_easter_egg=False,
         mode=load_or_create_config()["mode"],
         join_time=join_time,
-        leave_time=leave_time,
+        leave_time=datetime.now(),  # Log the leave time after playing sound
         user=interaction.user  # Pass the user who ran the command
     )
+
 
 # Slash command to join a specific voice channel without playing a sound
 @bot.tree.command(name="join", description="Make the bot join a voice channel without playing a sound.")
 @has_general_role()
 async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
+    await interaction.response.defer()  # Avoid interaction timeout
     try:
         join_time = datetime.now()  # Capture join time
-        vc = await channel.connect()
         
+        # Check if the bot is already in a voice channel and leave if necessary
+        if interaction.guild.voice_client:
+            if interaction.guild.voice_client.channel != channel:
+                await interaction.guild.voice_client.disconnect()
+
+        # Connect with self_deaf=True to suppress microphone activation
+        vc = await channel.connect(self_deaf=True)
+
         # Log the action when joining the voice channel
         await log_action(
             voice_channel=channel,
@@ -623,10 +750,11 @@ async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
             user=interaction.user  # Pass the user who ran the command
         )
 
-        await interaction.response.send_message(f"Joined {channel.name} without playing a sound.")
+        await interaction.followup.send(f"Joined {channel.name} without playing a sound. Microphone is suppressed.")
     except Exception as e:
-        await interaction.response.send_message(f"Error occurred: {e}")
+        await interaction.followup.send(f"Error occurred: {e}")
         print(f"Error: {e}")
+
 
 # Slash command to leave whatever channel the bot is currently in
 @bot.tree.command(name="leave", description="Make the bot leave the voice channel.")
@@ -669,6 +797,12 @@ async def reload(interaction: discord.Interaction):
     except Exception as e:
         await interaction.followup.send(f"Error occurred during reload: {e}")
         print(f"Error during reload: {e}")
+
+# Periodically check and reload Easter eggs
+async def periodic_check():
+    while True:
+        check_and_reload_easter_eggs()
+        await asyncio.sleep(60)  # Check every minute
 
 # Slash command to list, enable, or disable Easter Eggs
 @bot.tree.command(name="easteregg", description="List, enable, or disable Easter Eggs.")
