@@ -172,3 +172,8 @@ The log embed includes:
 - Mode of the bot
 - Sound played
 - Easter egg trigger (if applicable)
+
+## Credits
+- Wubbity (Main Bot Code)
+- Bindon (General and Logic Fixes)
+- KitCtrl (Original Idea for CheersBot)
