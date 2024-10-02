@@ -308,17 +308,6 @@ async def auto_join_task():
                             easter_egg.mark_triggered()
                             save_easter_eggs()
 
-# Global variable to track whether auto-join is enabled
-auto_join_enabled = False
-
-# Task to auto-join at every `x:15` time interval
-@tasks.loop(seconds=1)  # Check every second to ensure precise timing
-async def auto_join_task():
-    try:
-        if not auto_join_enabled:
-            return
-
-        now = datetime.now()
         # Auto-join task logic for every x:15
         if now.minute == 15 and now.second == 0:
             for guild in bot.guilds:
@@ -328,12 +317,9 @@ async def auto_join_task():
                         join_time = datetime.now()  # Capture join time
                         vc = await voice_channel.connect()
                         print(f"Automatically joined {voice_channel.name}")
-                        
-                        # Wait until the next interval (5 minutes later)
                         next_time = (now + timedelta(minutes=5)).replace(second=0, microsecond=0)
                         sleep_duration = (next_time - now).total_seconds()
                         await asyncio.sleep(sleep_duration)
-
                         sound_to_play = choose_sound()
 
                         # Define the after function to disconnect after the sound is done
@@ -799,21 +785,6 @@ async def leave(interaction: discord.Interaction):
         await interaction.response.send_message(f"Error occurred: {e}")
         print(f"Error: {e}")
 
-# Command to toggle the auto-join task
-@bot.tree.command(name="toggle_auto_join", description="Toggle the auto-join task.")
-@has_reload_role()
-async def toggle_auto_join(interaction: discord.Interaction):
-    global auto_join_enabled
-
-    # Toggle the auto-join state
-    auto_join_enabled = not auto_join_enabled
-
-    if auto_join_enabled:
-        auto_join_task.start()  # Start the task if it's enabled
-        await interaction.response.send_message("Auto-join task is now **enabled** and will run at every x:15.", ephemeral=True)
-    else:
-        auto_join_task.stop()  # Stop the task if it's disabled
-        await interaction.response.send_message("Auto-join task is now **disabled**.", ephemeral=True)
 
 # Slash command for reloading the bot's configuration and syncing commands
 @bot.tree.command(name="reload", description="Reload the bot's configuration and sync slash commands.")
