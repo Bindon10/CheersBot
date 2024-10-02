@@ -1,16 +1,10 @@
 {
     "sounds": {
-        "testing": 100,
-        "Cheers_Bitch": 0.001,
-        "Cheers by King": 0.001,
-        "FWYTB": 0.001,
-        "Its 420 Somewhere - Smoke up": 0.001,
-        "Its 420!!!": 0.001,
-        "cheersbitch_n_fuckyouking": 0.001,
-        "Mount-Cheers": 0.001,
-        "We hit the 20 - You better be smoking": 0.001
+        "Cheers_Bitch": 100,
+        "Its 420!!!": 0.001
     },
-    "default_sound": "testing",
+    "default_sound": "Cheers_Bitch",
+    "default_sound_file": "cheers_bitch",
     "mode": "randomize",
     "log_channel_id": 1287452825915228222,
     "log_settings": {
@@ -18,5 +12,10 @@
         "footer_text": "EST. 1/1/2024",
         "thumbnail_url": "https://i.imgur.com/SKICBLv.png",
         "footer_icon_url": "https://i.imgur.com/SKICBLv.png"
+    },
+    "startup_and_roles": {
+        "startup_channel_id": 1287452825915228222,
+        "role_needed_for_general_command": 1192810660271231007,
+        "role_needed_for_reload_command": 1203065103969288232
     }
 }

@@ -24,8 +24,8 @@
 #                                                                                                            #
 #                                                                                                            #
 ##############################################################################################################
-
 '''
+
 import discord
 from discord.ext import commands, tasks
 import asyncio
@@ -69,21 +69,38 @@ print(f"Sound folder path: {SOUND_FOLDER}")                                     
 print(f"FFmpeg path: {ffmpeg_path}")                                                                                                #
 #####################################################################################################################################
 
+# Get available sound files in the sound folder
+def get_available_sounds():
+    return [f[:-4] for f in os.listdir(SOUND_FOLDER) if f.endswith('.mp3')]
 
-# Default to a single sound file
-DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
-selected_sound = DEFAULT_SOUND_FILE
+# Save the config to the file, sorting sounds by percentage (highest first)
+def save_config(config):
+    # Sort the sounds by percentage in descending order (highest first)
+    config["sounds"] = dict(sorted(config["sounds"].items(), key=lambda item: item[1], reverse=True))
 
-# Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1287452825915228222  # What channel the bot logs it's startup to.
-ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
-ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
+    # Write the sorted config to the file
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
 
-# Easter Egg List
-easter_eggs = []
+# Update config to match the sounds in the sound folder
+def update_config_sounds(config):
+    available_sounds = get_available_sounds()
 
-# Path to the Easter Egg JSON file
-EASTER_EGG_FILE = "easter_eggs.json"
+    # Add missing sounds to config
+    for sound in available_sounds:
+        if sound not in config["sounds"]:
+            config["sounds"][sound] = 0.001
+
+    # Remove sounds from config that no longer exist in folder
+    for sound in list(config["sounds"].keys()):
+        if sound not in available_sounds:
+            del config["sounds"][sound]
+
+    if config["default_sound"] not in available_sounds:
+        config["default_sound"] = random.choice(available_sounds)
+        config["sounds"][config["default_sound"]] = 100
+
+    save_config(config)
 
 # Load or create the config file for sounds and mode
 def load_or_create_config():
@@ -122,43 +139,30 @@ def load_or_create_config():
 
     return config
 
-# Save the config to the file, sorting sounds by percentage (highest first)
-def save_config(config):
-    # Sort the sounds by percentage in descending order (highest first)
-    config["sounds"] = dict(sorted(config["sounds"].items(), key=lambda item: item[1], reverse=True))
+# Pull the values from the config.json file
+config = load_or_create_config()
+STARTUP_CHANNEL_ID = config["startup_and_roles"].get("startup_channel_id")
+ROLE_NEEDED_FOR_GENERAL_COMMAND = config["startup_and_roles"].get("role_needed_for_general_command")
+ROLE_NEEDED_FOR_RELOAD_COMMAND = config["startup_and_roles"].get("role_needed_for_reload_command")
 
-    # Write the sorted config to the file
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+# Default sound from config
+DEFAULT_SOUND_FILE = os.path.join(SOUND_FOLDER, f"{config.get('default_sound_file', 'cheers_bitch')}.mp3")
+selected_sound = DEFAULT_SOUND_FILE
+
+# Easter Egg List
+easter_eggs = []
+
+# Path to the Easter Egg JSON file
+EASTER_EGG_FILE = "easter_eggs.json"
+
+
 
 # Backup old config and create a new one
 def backup_and_create_new_config(config):
     os.rename(CONFIG_FILE, CONFIG_FILE + ".backup")
     save_config(config)
 
-# Get available sound files in the sound folder
-def get_available_sounds():
-    return [f[:-4] for f in os.listdir(SOUND_FOLDER) if f.endswith('.mp3')]
 
-# Update config to match the sounds in the sound folder
-def update_config_sounds(config):
-    available_sounds = get_available_sounds()
-
-    # Add missing sounds to config
-    for sound in available_sounds:
-        if sound not in config["sounds"]:
-            config["sounds"][sound] = 0.001
-
-    # Remove sounds from config that no longer exist in folder
-    for sound in list(config["sounds"].keys()):
-        if sound not in available_sounds:
-            del config["sounds"][sound]
-
-    if config["default_sound"] not in available_sounds:
-        config["default_sound"] = random.choice(available_sounds)
-        config["sounds"][config["default_sound"]] = 100
-
-    save_config(config)
 
 '''
   _____          _              _____                  _                   _                    
@@ -387,7 +391,8 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
             discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
             after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
         )
-
+        # Capture the leave time after playing
+        leave_time = datetime.now()
         # Log the action or handle any additional logic here
         # e.g., await log_action(...)
 
