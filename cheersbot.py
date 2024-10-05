@@ -58,8 +58,8 @@ current_os = platform.system()                                                  
 # Update ffmpeg path for Windows and Linux dynamically based on the detected OS                                                     #
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
-#elif current_os == "Linux":                                                                                                        #
-#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
+#elif current_os == "Linux":                                                                                                         #
+#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                    #
 elif current_os == "Linux":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install        #
 else:                                                                                                                               #
@@ -290,7 +290,7 @@ def build_timezone_mapping():
         return {}
 
 # Global variable to enable/disable auto-join
-auto_join_enabled = False
+auto_join_enabled = True
 
 # Auto-join task that runs every second
 @tasks.loop(seconds=1)
@@ -637,6 +637,13 @@ class ConfirmOverwriteView(View):
     @discord.ui.button(label="No", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: Button):
         await self.interaction.followup.send("Command canceled. The current percent configuration remains unchanged.", ephemeral=True)
+
+# command to check the state of auto-join
+@bot.tree.command(name="autojoin_status", description="Check the current state of auto-join.")
+async def autojoin_status(interaction: discord.Interaction):
+    # Check the state of auto_join_enabled
+    status = "enabled" if auto_join_enabled else "disabled"
+    await interaction.response.send_message(f"Auto-join is currently **{status}**.", ephemeral=True)
 
 @bot.tree.command(name="sounds", description="List all available sounds.")
 @has_general_role()
