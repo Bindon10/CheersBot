@@ -640,6 +640,7 @@ class ConfirmOverwriteView(View):
 
 # command to check the state of auto-join
 @bot.tree.command(name="autojoin_status", description="Check the current state of auto-join.")
+@has_general_role()
 async def autojoin_status(interaction: discord.Interaction):
     # Check the state of auto_join_enabled
     status = "enabled" if auto_join_enabled else "disabled"
@@ -663,6 +664,7 @@ async def sounds(interaction: discord.Interaction):
         
 # Command to toggle auto-join task
 @bot.tree.command(name="toggle_auto_join", description="Toggle the auto-join task.")
+@has_general_role()
 async def toggle_auto_join(interaction: discord.Interaction):
     global auto_join_enabled
 
