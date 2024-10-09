@@ -14,7 +14,7 @@
 
 ##############################################################################################################
 #   For Configuration:                                                                                       #
-#       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
+#       - Channel Logging ID and RoleIDs are now Handled in the config.json                                  #
 #                                                                                                            #
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
@@ -58,8 +58,8 @@ current_os = platform.system()                                                  
 # Update ffmpeg path for Windows and Linux dynamically based on the detected OS                                                     #
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
-#elif current_os == "Linux":                                                                                                        #
-#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
+#elif current_os == "Linux":                                                                                                         #
+#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                    #
 elif current_os == "Linux":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install        #
 else:                                                                                                                               #
@@ -289,30 +289,17 @@ def build_timezone_mapping():
         print(f"Error fetching timezones: {e}")
         return {}
 
-# Auto join task to manage timing
+# Global variable to enable/disable auto-join
+auto_join_enabled = True
+
+# Auto-join task that runs every second
 @tasks.loop(seconds=1)
 async def auto_join_task():
-    try:
+    global auto_join_enabled
+
+    # Auto-join task logic for every x:15
+    if auto_join_enabled:
         now = datetime.now(pytz.utc)
-
-        if now.second in [0, 30]:  # This will print time every 30 seconds
-            print(f"Checking time: {now.strftime('%H:%M:%S')}")
-
-        # Check for Easter Egg triggers
-        for easter_egg in easter_eggs:
-            if easter_egg.enabled and easter_egg.can_trigger():
-                join_time_utc = easter_egg.get_converted_time()
-                if join_time_utc and now.strftime("%H:%M") == join_time_utc.strftime("%H:%M"):  # Exact minute match
-                    # It's time to trigger the Easter Egg
-                    for guild in bot.guilds:
-                        voice_channel = get_most_populated_voice_channel(guild)
-                        if voice_channel:
-                            print(f"Triggering Easter Egg '{easter_egg.name}' in {voice_channel.name}")
-                            await handle_easter_egg_trigger(easter_egg, voice_channel, guild)
-                            easter_egg.mark_triggered()
-                            save_easter_eggs()
-
-        # Auto-join task logic for every x:15
         if now.minute == 15 and now.second == 0:
             for guild in bot.guilds:
                 voice_channel = get_most_populated_voice_channel(guild)
@@ -353,8 +340,27 @@ async def auto_join_task():
                         )
                     except Exception as e:
                         print(f"Error occurred during auto join/play: {e}")
+
+# New task to check for Easter Egg triggers independently
+@tasks.loop(seconds=1)
+async def easter_egg_task():
+    try:
+        now = datetime.now(pytz.utc)
+
+        # Easter Egg triggers
+        for easter_egg in easter_eggs:
+            if easter_egg.enabled and easter_egg.can_trigger():
+                join_time_utc = easter_egg.get_converted_time()
+                if join_time_utc and now.strftime("%H:%M") == join_time_utc.strftime("%H:%M"):
+                    for guild in bot.guilds:
+                        voice_channel = get_most_populated_voice_channel(guild)
+                        if voice_channel:
+                            print(f"Triggering Easter Egg '{easter_egg.name}' in {voice_channel.name}")
+                            await handle_easter_egg_trigger(easter_egg, voice_channel, guild)
+                            easter_egg.mark_triggered()
+                            save_easter_eggs()
     except Exception as e:
-        print(f"Error in auto_join_task: {e}")
+        print(f"Error in easter_egg_task: {e}")
 
 # Handle Easter Egg Trigger
 async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
@@ -632,6 +638,14 @@ class ConfirmOverwriteView(View):
     async def cancel(self, interaction: discord.Interaction, button: Button):
         await self.interaction.followup.send("Command canceled. The current percent configuration remains unchanged.", ephemeral=True)
 
+# command to check the state of auto-join
+@bot.tree.command(name="autojoin_status", description="Check the current state of auto-join.")
+@has_general_role()
+async def autojoin_status(interaction: discord.Interaction):
+    # Check the state of auto_join_enabled
+    status = "enabled" if auto_join_enabled else "disabled"
+    await interaction.response.send_message(f"Auto-join is currently **{status}**.", ephemeral=True)
+
 @bot.tree.command(name="sounds", description="List all available sounds.")
 @has_general_role()
 async def sounds(interaction: discord.Interaction):
@@ -647,6 +661,18 @@ async def sounds(interaction: discord.Interaction):
         # Just list sounds in single or randomize mode
         sound_list = "\n".join(available_sounds)
         await interaction.response.send_message(f"Available sounds:\n{sound_list}")
+        
+# Command to toggle auto-join task
+@bot.tree.command(name="toggle_auto_join", description="Toggle the auto-join task.")
+@has_general_role()
+async def toggle_auto_join(interaction: discord.Interaction):
+    global auto_join_enabled
+
+    # Toggle the auto_join_enabled flag
+    auto_join_enabled = not auto_join_enabled
+    state = "enabled" if auto_join_enabled else "disabled"
+    
+    await interaction.response.send_message(f"Auto-join task {state}.")
 
 @bot.tree.command(name="testsound", description="Test a specific sound in a voice channel.")
 @has_general_role()
@@ -1081,9 +1107,13 @@ async def on_ready():
     load_easter_eggs()  # Load Easter Eggs
     load_or_create_config()  # Load configuration
     await bot.tree.sync()  # Sync slash commands
-    auto_join_task.start()  # Start the auto join task
-    print(f"Logged in as {bot.user} and slash commands are ready.")
+    easter_egg_task.start()  # Start the Easter egg task
 
+    # Ensure the task is started but will respect the toggle
+    if not auto_join_task.is_running():
+        auto_join_task.start()
+
+    print(f"Logged in as {bot.user} and slash commands are ready.")
 
 # Load the environment variables from .env file
 load_dotenv()
