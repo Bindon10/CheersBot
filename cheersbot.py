@@ -293,7 +293,7 @@ def build_timezone_mapping():
 auto_join_enabled = True
 
 # Auto-join task that runs every second
-@tasks.loop(seconds=1)
+@tasks.loop(seconds=5)
 async def auto_join_task():
     global auto_join_enabled
 
@@ -306,8 +306,11 @@ async def auto_join_task():
                 if voice_channel:
                     try:
                         join_time = datetime.now()  # Capture join time
-                        vc = await voice_channel.connect()
+                        vc = await voice_channel.connect(reconnect=True)
                         print(f"Automatically joined {voice_channel.name}")
+                        # Add a small delay before playing the sound to ensure the connection stabilizes
+                        await asyncio.sleep(2)  # Wait for 2 seconds before proceeding
+
                         next_time = (now + timedelta(minutes=5)).replace(second=0, microsecond=0)
                         sleep_duration = (next_time - now).total_seconds()
                         await asyncio.sleep(sleep_duration)
@@ -323,7 +326,7 @@ async def auto_join_task():
                                 print(f"Error disconnecting: {e}")
 
                         vc.play(
-                            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+                            discord.FFmpegOpusAudio(sound_to_play, executable=ffmpeg_path),
                             after=after_playing  # Pass the after function
                         )
 
@@ -342,7 +345,7 @@ async def auto_join_task():
                         print(f"Error occurred during auto join/play: {e}")
 
 # New task to check for Easter Egg triggers independently
-@tasks.loop(seconds=1)
+@tasks.loop(seconds=5)
 async def easter_egg_task():
     try:
         now = datetime.now(pytz.utc)
@@ -385,25 +388,21 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
         print(f"Playing sound: {sound_to_play}")
 
         # Function to disconnect after sound is done
-        async def after_playing(error):
-            if error:
-                print(f"Error playing sound: {error}")
+        async def after_playing(vc):
             if vc.is_connected():
-                print(f"Disconnecting from {vc.channel.name}...")
                 await vc.disconnect()
 
         # Start playing the sound
         vc.play(
             discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
-            after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
+            after=lambda e: asyncio.create_task(after_playing(vc))
         )
         # Capture the leave time after playing
         leave_time = datetime.now()
-        # Log the action or handle any additional logic here
-        # e.g., await log_action(...)
 
     except Exception as e:
         print(f"Error in handle_easter_egg_trigger: {e}")
+        leave_time = datetime.now()  # Ensure leave_time is initialized even on error
 
         # Log the Easter egg action after the bot leaves the voice channel
         await log_action(

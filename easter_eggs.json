@@ -1,29 +1,20 @@
 [
     {
-        "name": "Bellz420AM",
+        "name": "testing",
         "sound": "Cheers_Bitch",
         "join_time": "4:15 AM",
         "play_delay": 5,
-        "timezone": "ACST",
-        "enabled": true,
-        "last_triggered": "2024-09-25T18:50:11.654544+00:00"
-    },
-    {
-        "name": "Bellz420PM",
-        "sound": "Cheers_Bitch",
-        "join_time": "4:15 PM",
-        "play_delay": 5,
-        "timezone": "ACST",
-        "enabled": true,
-        "last_triggered": "2024-09-26T06:50:11.678484+00:00"
-    },
-    {
-        "name": "testing",
-        "sound": "testing",
-        "join_time": "11:49 AM",
-        "play_delay": 0,
         "timezone": "CST",
         "enabled": true,
-        "last_triggered": "2024-09-26T16:49:11.828401+00:00"
+        "last_triggered": "2024-10-09T19:31:52.917074+00:00"
+    },
+    {
+        "name": "testing2",
+        "sound": "Its 420!!!",
+        "join_time": "6:15 AM",
+        "play_delay": 5,
+        "timezone": "JST",
+        "enabled": true,
+        "last_triggered": null
     }
 ]
