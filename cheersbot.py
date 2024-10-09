@@ -82,19 +82,25 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
 
-# Update config to match the sounds in the sound folder
+# Update config to match the sounds in the sound folder and manage sound_status
 def update_config_sounds(config):
     available_sounds = get_available_sounds()
 
-    # Add missing sounds to config
+    # Add missing sounds to config (with default percentage and enabled status)
     for sound in available_sounds:
         if sound not in config["sounds"]:
-            config["sounds"][sound] = 0.001
+            config["sounds"][sound] = 0.001  # Default percentage for new sounds
+        if "sound_status" not in config:
+            config["sound_status"] = {}  # Ensure sound_status exists
+        if sound not in config["sound_status"]:
+            config["sound_status"][sound] = True  # Default status for new sounds is enabled
 
-    # Remove sounds from config that no longer exist in folder
+    # Remove sounds from config that no longer exist in the folder
     for sound in list(config["sounds"].keys()):
         if sound not in available_sounds:
             del config["sounds"][sound]
+            if sound in config["sound_status"]:
+                del config["sound_status"][sound]
 
     if config["default_sound"] not in available_sounds:
         config["default_sound"] = random.choice(available_sounds)
@@ -645,21 +651,108 @@ async def autojoin_status(interaction: discord.Interaction):
     status = "enabled" if auto_join_enabled else "disabled"
     await interaction.response.send_message(f"Auto-join is currently **{status}**.", ephemeral=True)
 
-@bot.tree.command(name="sounds", description="List all available sounds.")
+@bot.tree.command(name="sounds", description="List all available sounds or enable/disable a sound.")
+@app_commands.describe(sound_name="The name of the sound to enable/disable.", action="Either 'enable' or 'disable'.")
 @has_general_role()
-async def sounds(interaction: discord.Interaction):
+async def sounds(interaction: discord.Interaction, sound_name: str = None, action: str = None):
     config = load_or_create_config()
     
     available_sounds = get_available_sounds()
 
+    if sound_name and action:
+        # Enable or disable the sound
+        sound_name_lower = sound_name.lower()
+
+        if sound_name_lower not in [s.lower() for s in available_sounds]:
+            await interaction.response.send_message(f"Invalid sound name. Available sounds: {', '.join(available_sounds)}", ephemeral=True)
+            return
+
+        if action.lower() not in ["enable", "disable"]:
+            await interaction.response.send_message("Invalid action. Use 'enable' or 'disable'.", ephemeral=True)
+            return
+
+        # Ensure that the config contains the enable/disable flag for each sound
+        if "sound_status" not in config:
+            config["sound_status"] = {sound: True for sound in available_sounds}
+
+        # Update the enabled/disabled status for the sound
+        config["sound_status"][sound_name] = (action.lower() == "enable")
+        save_config(config)
+
+        status = "enabled" if config["sound_status"][sound_name] else "disabled"
+        await interaction.response.send_message(f"Sound '{sound_name}' is now {status}.", ephemeral=True)
+        return
+
+    # If no sound_name or action is provided, list all sounds and their status
+    sound_status = config.get("sound_status", {sound: True for sound in available_sounds})
+
     if config["mode"] == "percent":
         # Show sounds with their percentages in percent mode
-        sound_list = "\n".join([f"{sound}: {percent}%" for sound, percent in config["sounds"].items()])
+        sound_list = "\n".join([f"{sound} `{('Enabled' if sound_status.get(sound, True) else 'Disabled')}`: {percent}%" for sound, percent in config["sounds"].items()])
         await interaction.response.send_message(f"Available sounds and their percentages:\n{sound_list}")
     else:
-        # Just list sounds in single or randomize mode
-        sound_list = "\n".join(available_sounds)
+        # Just list sounds in single or randomize mode, with their enabled/disabled status
+        sound_list = "\n".join([f"{sound} `{('Enabled' if sound_status.get(sound, True) else 'Disabled')}`" for sound in available_sounds])
         await interaction.response.send_message(f"Available sounds:\n{sound_list}")
+
+# Function to choose a sound for auto-join, excluding disabled sounds
+def choose_sound():
+    config = load_or_create_config()
+    available_sounds = get_available_sounds()
+    
+    # Get the sound status (enabled/disabled)
+    sound_status = config.get("sound_status", {sound: True for sound in available_sounds})
+    
+    # Filter sounds to only include enabled ones
+    enabled_sounds = [sound for sound in available_sounds if sound_status.get(sound, True)]
+
+    if config["mode"] == "randomize":
+        return os.path.join(SOUND_FOLDER, random.choice(enabled_sounds) + ".mp3")
+    elif config["mode"] == "percent":
+        # Filter percent sounds to only include enabled ones
+        enabled_percent_sounds = {sound: percent for sound, percent in config["sounds"].items() if sound in enabled_sounds}
+        return weighted_random_choice(enabled_percent_sounds)
+    else:
+        return os.path.join(SOUND_FOLDER, config["default_sound"] + ".mp3")
+
+# Function to handle Easter Egg triggers
+async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
+    try:
+        join_time = datetime.now()  # Capture join time when the bot joins
+
+        # Check if already connected to a voice channel
+        if guild.voice_client is None:
+            print(f"Bot is not connected. Joining {voice_channel.name}...")
+            vc = await voice_channel.connect()
+            print(f"Joined {voice_channel.name}.")
+        else:
+            vc = guild.voice_client
+            print(f"Bot is already connected to {vc.channel.name}.")
+
+        # Apply delay if configured
+        if easter_egg.play_delay > 0:
+            print(f"Delaying sound for {easter_egg.play_delay} minutes...")
+            await asyncio.sleep(easter_egg.play_delay * 60)
+
+        # Easter eggs ignore the enabled/disabled status of sounds
+        sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
+        print(f"Playing sound: {sound_to_play}")
+
+        # Function to disconnect after sound is done
+        async def after_playing(vc):
+            if vc.is_connected():
+                await vc.disconnect()
+
+        # Start playing the sound
+        vc.play(
+            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+            after=lambda e: asyncio.create_task(after_playing(vc))
+        )
+        # Capture the leave time after playing
+        leave_time = datetime.now()
+
+    except Exception as e:
+        print(f"Error in handle_easter_egg_trigger: {e}")
         
 # Command to toggle auto-join task
 @bot.tree.command(name="toggle_auto_join", description="Toggle the auto-join task.")

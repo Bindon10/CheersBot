@@ -1,9 +1,9 @@
 {
     "sounds": {
-        "Cheers_Bitch": 100,
-        "Its 420!!!": 0.001
+        "Its 420!!!": 100,
+        "Cheers_Bitch": 0.001
     },
-    "default_sound": "Cheers_Bitch",
+    "default_sound": "Its 420!!!",
     "default_sound_file": "cheers_bitch",
     "mode": "randomize",
     "log_channel_id": 1287452825915228222,
