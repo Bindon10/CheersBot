@@ -14,7 +14,7 @@
 
 ##############################################################################################################
 #   For Configuration:                                                                                       #
-#       - Line 77 - 79 are used for permissions and logging, you set your channel and role IDs there         #
+#       - Channel Logging ID and RoleIDs are now Handled in the config.json                                  #
 #                                                                                                            #
 #                                                                                                            #
 #   For FFMPEG:                                                                                              #
@@ -24,8 +24,8 @@
 #                                                                                                            #
 #                                                                                                            #
 ##############################################################################################################
-
 '''
+
 import discord
 from discord.ext import commands, tasks
 import asyncio
@@ -58,8 +58,8 @@ current_os = platform.system()                                                  
 # Update ffmpeg path for Windows and Linux dynamically based on the detected OS                                                     #
 if current_os == "Windows":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg.exe")  # Windows executable                                              #
-#elif current_os == "Linux":                                                                                                        #
-#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                  #
+#elif current_os == "Linux":                                                                                                         #
+#   ffmpeg_path = os.path.join("/usr/bin/", "ffmpeg")  # Linux executable, by Default this is usually in /usr/bin                    #
 elif current_os == "Linux":                                                                                                         #
     ffmpeg_path = os.path.join(BASE_DIR, "FFMPEG", "ffmpeg")  # Linux; Comment the previous value for an "in folder" install        #
 else:                                                                                                                               #
@@ -69,21 +69,44 @@ print(f"Sound folder path: {SOUND_FOLDER}")                                     
 print(f"FFmpeg path: {ffmpeg_path}")                                                                                                #
 #####################################################################################################################################
 
+# Get available sound files in the sound folder
+def get_available_sounds():
+    return [f[:-4] for f in os.listdir(SOUND_FOLDER) if f.endswith('.mp3')]
 
-# Default to a single sound file
-DEFAULT_SOUND_FILE = f"{SOUND_FOLDER}/cheers_bitch.mp3"
-selected_sound = DEFAULT_SOUND_FILE
+# Save the config to the file, sorting sounds by percentage (highest first)
+def save_config(config):
+    # Sort the sounds by percentage in descending order (highest first)
+    config["sounds"] = dict(sorted(config["sounds"].items(), key=lambda item: item[1], reverse=True))
 
-# Define the channel ID where the bot will send the startup message, Define the General Command Role and Reload Role.
-STARTUP_CHANNEL_ID = 1287452825915228222  # What channel the bot logs it's startup to.
-ROLE_NEEDED_FOR_GENERAL_COMMAND = 1192810660271231007 # General Staff Role
-ROLE_NEEDED_FOR_RELOAD_COMMAND = 1203065103969288232  # Higher Staff Role
+    # Write the sorted config to the file
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
 
-# Easter Egg List
-easter_eggs = []
+# Update config to match the sounds in the sound folder and manage sound_status
+def update_config_sounds(config):
+    available_sounds = get_available_sounds()
 
-# Path to the Easter Egg JSON file
-EASTER_EGG_FILE = "easter_eggs.json"
+    # Add missing sounds to config (with default percentage and enabled status)
+    for sound in available_sounds:
+        if sound not in config["sounds"]:
+            config["sounds"][sound] = 0.001  # Default percentage for new sounds
+        if "sound_status" not in config:
+            config["sound_status"] = {}  # Ensure sound_status exists
+        if sound not in config["sound_status"]:
+            config["sound_status"][sound] = True  # Default status for new sounds is enabled
+
+    # Remove sounds from config that no longer exist in the folder
+    for sound in list(config["sounds"].keys()):
+        if sound not in available_sounds:
+            del config["sounds"][sound]
+            if sound in config["sound_status"]:
+                del config["sound_status"][sound]
+
+    if config["default_sound"] not in available_sounds:
+        config["default_sound"] = random.choice(available_sounds)
+        config["sounds"][config["default_sound"]] = 100
+
+    save_config(config)
 
 # Load or create the config file for sounds and mode
 def load_or_create_config():
@@ -122,43 +145,30 @@ def load_or_create_config():
 
     return config
 
-# Save the config to the file, sorting sounds by percentage (highest first)
-def save_config(config):
-    # Sort the sounds by percentage in descending order (highest first)
-    config["sounds"] = dict(sorted(config["sounds"].items(), key=lambda item: item[1], reverse=True))
+# Pull the values from the config.json file
+config = load_or_create_config()
+STARTUP_CHANNEL_ID = config["startup_and_roles"].get("startup_channel_id")
+ROLE_NEEDED_FOR_GENERAL_COMMAND = config["startup_and_roles"].get("role_needed_for_general_command")
+ROLE_NEEDED_FOR_RELOAD_COMMAND = config["startup_and_roles"].get("role_needed_for_reload_command")
 
-    # Write the sorted config to the file
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+# Default sound from config
+DEFAULT_SOUND_FILE = os.path.join(SOUND_FOLDER, f"{config.get('default_sound_file', 'cheers_bitch')}.mp3")
+selected_sound = DEFAULT_SOUND_FILE
+
+# Easter Egg List
+easter_eggs = []
+
+# Path to the Easter Egg JSON file
+EASTER_EGG_FILE = "easter_eggs.json"
+
+
 
 # Backup old config and create a new one
 def backup_and_create_new_config(config):
     os.rename(CONFIG_FILE, CONFIG_FILE + ".backup")
     save_config(config)
 
-# Get available sound files in the sound folder
-def get_available_sounds():
-    return [f[:-4] for f in os.listdir(SOUND_FOLDER) if f.endswith('.mp3')]
 
-# Update config to match the sounds in the sound folder
-def update_config_sounds(config):
-    available_sounds = get_available_sounds()
-
-    # Add missing sounds to config
-    for sound in available_sounds:
-        if sound not in config["sounds"]:
-            config["sounds"][sound] = 0.001
-
-    # Remove sounds from config that no longer exist in folder
-    for sound in list(config["sounds"].keys()):
-        if sound not in available_sounds:
-            del config["sounds"][sound]
-
-    if config["default_sound"] not in available_sounds:
-        config["default_sound"] = random.choice(available_sounds)
-        config["sounds"][config["default_sound"]] = 100
-
-    save_config(config)
 
 '''
   _____          _              _____                  _                   _                    
@@ -285,38 +295,28 @@ def build_timezone_mapping():
         print(f"Error fetching timezones: {e}")
         return {}
 
-# Auto join task to manage timing
-@tasks.loop(seconds=1)
+# Global variable to enable/disable auto-join
+auto_join_enabled = True
+
+# Auto-join task that runs every second
+@tasks.loop(seconds=5)
 async def auto_join_task():
-    try:
+    global auto_join_enabled
+
+    # Auto-join task logic for every x:15
+    if auto_join_enabled:
         now = datetime.now(pytz.utc)
-
-        if now.second in [0, 30]:  # This will print time every 30 seconds
-            print(f"Checking time: {now.strftime('%H:%M:%S')}")
-
-        # Check for Easter Egg triggers
-        for easter_egg in easter_eggs:
-            if easter_egg.enabled and easter_egg.can_trigger():
-                join_time_utc = easter_egg.get_converted_time()
-                if join_time_utc and now.strftime("%H:%M") == join_time_utc.strftime("%H:%M"):  # Exact minute match
-                    # It's time to trigger the Easter Egg
-                    for guild in bot.guilds:
-                        voice_channel = get_most_populated_voice_channel(guild)
-                        if voice_channel:
-                            print(f"Triggering Easter Egg '{easter_egg.name}' in {voice_channel.name}")
-                            await handle_easter_egg_trigger(easter_egg, voice_channel, guild)
-                            easter_egg.mark_triggered()
-                            save_easter_eggs()
-
-        # Auto-join task logic for every x:15
         if now.minute == 15 and now.second == 0:
             for guild in bot.guilds:
                 voice_channel = get_most_populated_voice_channel(guild)
                 if voice_channel:
                     try:
                         join_time = datetime.now()  # Capture join time
-                        vc = await voice_channel.connect()
+                        vc = await voice_channel.connect(reconnect=True)
                         print(f"Automatically joined {voice_channel.name}")
+                        # Add a small delay before playing the sound to ensure the connection stabilizes
+                        await asyncio.sleep(2)  # Wait for 2 seconds before proceeding
+
                         next_time = (now + timedelta(minutes=5)).replace(second=0, microsecond=0)
                         sleep_duration = (next_time - now).total_seconds()
                         await asyncio.sleep(sleep_duration)
@@ -332,7 +332,7 @@ async def auto_join_task():
                                 print(f"Error disconnecting: {e}")
 
                         vc.play(
-                            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+                            discord.FFmpegOpusAudio(sound_to_play, executable=ffmpeg_path),
                             after=after_playing  # Pass the after function
                         )
 
@@ -349,8 +349,27 @@ async def auto_join_task():
                         )
                     except Exception as e:
                         print(f"Error occurred during auto join/play: {e}")
+
+# New task to check for Easter Egg triggers independently
+@tasks.loop(seconds=5)
+async def easter_egg_task():
+    try:
+        now = datetime.now(pytz.utc)
+
+        # Easter Egg triggers
+        for easter_egg in easter_eggs:
+            if easter_egg.enabled and easter_egg.can_trigger():
+                join_time_utc = easter_egg.get_converted_time()
+                if join_time_utc and now.strftime("%H:%M") == join_time_utc.strftime("%H:%M"):
+                    for guild in bot.guilds:
+                        voice_channel = get_most_populated_voice_channel(guild)
+                        if voice_channel:
+                            print(f"Triggering Easter Egg '{easter_egg.name}' in {voice_channel.name}")
+                            await handle_easter_egg_trigger(easter_egg, voice_channel, guild)
+                            easter_egg.mark_triggered()
+                            save_easter_eggs()
     except Exception as e:
-        print(f"Error in auto_join_task: {e}")
+        print(f"Error in easter_egg_task: {e}")
 
 # Handle Easter Egg Trigger
 async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
@@ -375,24 +394,21 @@ async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
         print(f"Playing sound: {sound_to_play}")
 
         # Function to disconnect after sound is done
-        async def after_playing(error):
-            if error:
-                print(f"Error playing sound: {error}")
+        async def after_playing(vc):
             if vc.is_connected():
-                print(f"Disconnecting from {vc.channel.name}...")
                 await vc.disconnect()
 
         # Start playing the sound
         vc.play(
             discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
-            after=lambda e: asyncio.run_coroutine_threadsafe(after_playing(e), bot.loop)
+            after=lambda e: asyncio.create_task(after_playing(vc))
         )
-
-        # Log the action or handle any additional logic here
-        # e.g., await log_action(...)
+        # Capture the leave time after playing
+        leave_time = datetime.now()
 
     except Exception as e:
         print(f"Error in handle_easter_egg_trigger: {e}")
+        leave_time = datetime.now()  # Ensure leave_time is initialized even on error
 
         # Log the Easter egg action after the bot leaves the voice channel
         await log_action(
@@ -627,21 +643,128 @@ class ConfirmOverwriteView(View):
     async def cancel(self, interaction: discord.Interaction, button: Button):
         await self.interaction.followup.send("Command canceled. The current percent configuration remains unchanged.", ephemeral=True)
 
-@bot.tree.command(name="sounds", description="List all available sounds.")
+# command to check the state of auto-join
+@bot.tree.command(name="autojoin_status", description="Check the current state of auto-join.")
 @has_general_role()
-async def sounds(interaction: discord.Interaction):
+async def autojoin_status(interaction: discord.Interaction):
+    # Check the state of auto_join_enabled
+    status = "enabled" if auto_join_enabled else "disabled"
+    await interaction.response.send_message(f"Auto-join is currently **{status}**.", ephemeral=True)
+
+@bot.tree.command(name="sounds", description="List all available sounds or enable/disable a sound.")
+@app_commands.describe(sound_name="The name of the sound to enable/disable.", action="Either 'enable' or 'disable'.")
+@has_general_role()
+async def sounds(interaction: discord.Interaction, sound_name: str = None, action: str = None):
     config = load_or_create_config()
     
     available_sounds = get_available_sounds()
 
+    if sound_name and action:
+        # Enable or disable the sound
+        sound_name_lower = sound_name.lower()
+
+        if sound_name_lower not in [s.lower() for s in available_sounds]:
+            await interaction.response.send_message(f"Invalid sound name. Available sounds: {', '.join(available_sounds)}", ephemeral=True)
+            return
+
+        if action.lower() not in ["enable", "disable"]:
+            await interaction.response.send_message("Invalid action. Use 'enable' or 'disable'.", ephemeral=True)
+            return
+
+        # Ensure that the config contains the enable/disable flag for each sound
+        if "sound_status" not in config:
+            config["sound_status"] = {sound: True for sound in available_sounds}
+
+        # Update the enabled/disabled status for the sound
+        config["sound_status"][sound_name] = (action.lower() == "enable")
+        save_config(config)
+
+        status = "enabled" if config["sound_status"][sound_name] else "disabled"
+        await interaction.response.send_message(f"Sound '{sound_name}' is now {status}.", ephemeral=True)
+        return
+
+    # If no sound_name or action is provided, list all sounds and their status
+    sound_status = config.get("sound_status", {sound: True for sound in available_sounds})
+
     if config["mode"] == "percent":
         # Show sounds with their percentages in percent mode
-        sound_list = "\n".join([f"{sound}: {percent}%" for sound, percent in config["sounds"].items()])
+        sound_list = "\n".join([f"{sound} `{('Enabled' if sound_status.get(sound, True) else 'Disabled')}`: {percent}%" for sound, percent in config["sounds"].items()])
         await interaction.response.send_message(f"Available sounds and their percentages:\n{sound_list}")
     else:
-        # Just list sounds in single or randomize mode
-        sound_list = "\n".join(available_sounds)
+        # Just list sounds in single or randomize mode, with their enabled/disabled status
+        sound_list = "\n".join([f"{sound} `{('Enabled' if sound_status.get(sound, True) else 'Disabled')}`" for sound in available_sounds])
         await interaction.response.send_message(f"Available sounds:\n{sound_list}")
+
+# Function to choose a sound for auto-join, excluding disabled sounds
+def choose_sound():
+    config = load_or_create_config()
+    available_sounds = get_available_sounds()
+    
+    # Get the sound status (enabled/disabled)
+    sound_status = config.get("sound_status", {sound: True for sound in available_sounds})
+    
+    # Filter sounds to only include enabled ones
+    enabled_sounds = [sound for sound in available_sounds if sound_status.get(sound, True)]
+
+    if config["mode"] == "randomize":
+        return os.path.join(SOUND_FOLDER, random.choice(enabled_sounds) + ".mp3")
+    elif config["mode"] == "percent":
+        # Filter percent sounds to only include enabled ones
+        enabled_percent_sounds = {sound: percent for sound, percent in config["sounds"].items() if sound in enabled_sounds}
+        return weighted_random_choice(enabled_percent_sounds)
+    else:
+        return os.path.join(SOUND_FOLDER, config["default_sound"] + ".mp3")
+
+# Function to handle Easter Egg triggers
+async def handle_easter_egg_trigger(easter_egg, voice_channel, guild):
+    try:
+        join_time = datetime.now()  # Capture join time when the bot joins
+
+        # Check if already connected to a voice channel
+        if guild.voice_client is None:
+            print(f"Bot is not connected. Joining {voice_channel.name}...")
+            vc = await voice_channel.connect()
+            print(f"Joined {voice_channel.name}.")
+        else:
+            vc = guild.voice_client
+            print(f"Bot is already connected to {vc.channel.name}.")
+
+        # Apply delay if configured
+        if easter_egg.play_delay > 0:
+            print(f"Delaying sound for {easter_egg.play_delay} minutes...")
+            await asyncio.sleep(easter_egg.play_delay * 60)
+
+        # Easter eggs ignore the enabled/disabled status of sounds
+        sound_to_play = os.path.join(SOUND_FOLDER, f"{easter_egg.sound}.mp3")
+        print(f"Playing sound: {sound_to_play}")
+
+        # Function to disconnect after sound is done
+        async def after_playing(vc):
+            if vc.is_connected():
+                await vc.disconnect()
+
+        # Start playing the sound
+        vc.play(
+            discord.FFmpegPCMAudio(sound_to_play, executable=ffmpeg_path),
+            after=lambda e: asyncio.create_task(after_playing(vc))
+        )
+        # Capture the leave time after playing
+        leave_time = datetime.now()
+
+    except Exception as e:
+        print(f"Error in handle_easter_egg_trigger: {e}")
+        
+# Command to toggle auto-join task
+@bot.tree.command(name="toggle_auto_join", description="Toggle the auto-join task.")
+@has_general_role()
+async def toggle_auto_join(interaction: discord.Interaction):
+    global auto_join_enabled
+
+    # Toggle the auto_join_enabled flag
+    auto_join_enabled = not auto_join_enabled
+    state = "enabled" if auto_join_enabled else "disabled"
+    
+    await interaction.response.send_message(f"Auto-join task {state}.")
 
 @bot.tree.command(name="testsound", description="Test a specific sound in a voice channel.")
 @has_general_role()
@@ -1076,9 +1199,13 @@ async def on_ready():
     load_easter_eggs()  # Load Easter Eggs
     load_or_create_config()  # Load configuration
     await bot.tree.sync()  # Sync slash commands
-    auto_join_task.start()  # Start the auto join task
-    print(f"Logged in as {bot.user} and slash commands are ready.")
+    easter_egg_task.start()  # Start the Easter egg task
 
+    # Ensure the task is started but will respect the toggle
+    if not auto_join_task.is_running():
+        auto_join_task.start()
+
+    print(f"Logged in as {bot.user} and slash commands are ready.")
 
 # Load the environment variables from .env file
 load_dotenv()

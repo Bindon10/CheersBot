@@ -88,8 +88,12 @@ Here’s a list of all available slash commands:
 - **/join <channel>**: Joins the specified voice channel without playing any sound.
 - **/leave**: Makes the bot leave the current voice channel.
 - **/cheers <channel>**: Joins a specified voice channel, plays the current sound, and leaves the channel.
-- **/sounds**: Lists all available sounds in the sound folder.
+- **/sounds [sound_name] [enable/disable]**: 
+  - **/Sounds** - Lists all available sounds in the sound folder.
+  - **/Sounds [sound_name] [enable/disable]** - Enables/Disables specific sound from folder. **If an Easter Egg uses a disabled sound, the bot will still join and the sound will still play.**
 - **/testsound <sound_name> <channel>**: Plays the specified sound in the chosen voice channel. You can specify whether the bot should leave after playing the sound.
+- **/autojoin_status**: Check the status of Auto-join
+- **/toggle_auto_join**: Toggle automatic joining
 
 ### Mode Commands
 
@@ -172,3 +176,8 @@ The log embed includes:
 - Mode of the bot
 - Sound played
 - Easter egg trigger (if applicable)
+
+## Credits
+- Wubbity (Main Bot Code)
+- Bindon (General and Logic Fixes)
+- KitCtrl (Original Idea for CheersBot)
